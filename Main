@@ -1,5 +1,53 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn import svm, datasets
 
 training_set = np.genfromtxt("data_clean.txt", delimiter=" ")
-print(training_set[0:5])
+
+pos1 = []
+pos2 = []
+neg1 = []
+neg2 = []
+labels = []
+points = []
+n=0
+for point in training_set:
+    if n < 20:
+        n += 1
+        points.append([point[1], point[2]])
+        labels.append(point[0])
+        if point[0] == 1:
+            pos1.append(point[1])
+            pos2.append(point[2])
+        else:
+            neg1.append(point[1])
+            neg2.append(point[2])
+
+#t = np.arange(0.0, 200.0, 1)
+#plt.plot(pos1, pos2, 'ro', neg1, neg2, 'bo', t, 'g')
+#plt.show()
+
+C = 1.0  # SVM regularization parameter
+h = 1 # step size in the mesh
+svc = svm.SVC(kernel='linear', C=C).fit(points, labels)
+x_min, x_max = 0, 200
+y_min, y_max = 0, 200
+xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                     np.arange(y_min, y_max, h))
+Z = svc.predict(np.c_[xx.ravel(), yy.ravel()])
+
+# Put the result into a color plot
+Z = Z.reshape(xx.shape)
+plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
+
+# Plot also the training points
+plt.scatter(points[:][0], points[:][1], c=labels, cmap=plt.cm.coolwarm)
+plt.xlabel('feature1')
+plt.ylabel('feature2')
+plt.xlim(xx.min(), xx.max())
+plt.ylim(yy.min(), yy.max())
+plt.xticks(())
+plt.yticks(())
+plt.title('linear svm')
+
+plt.show()
