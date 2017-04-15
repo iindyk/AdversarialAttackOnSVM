@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn import svm, datasets
+from sklearn import svm
+from sklearn.metrics import accuracy_score
 
 training_set = np.genfromtxt("data_clean.txt", delimiter=" ")
 
@@ -42,6 +43,8 @@ Z = svc.predict(np.c_[xx.ravel(), yy.ravel()])
 Z = Z.reshape(xx.shape)
 plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
 
+predicted_labels = svc.predict(points)
+err = accuracy_score(labels, predicted_labels)
 # Plot also the training points
 plt.scatter([float(i[0]) for i in points], [float(i[1]) for i in points], c=colors, cmap=plt.cm.coolwarm)
 plt.xlabel('feature1')
@@ -50,6 +53,6 @@ plt.xlim(xx.min(), xx.max())
 plt.ylim(yy.min(), yy.max())
 plt.xticks(())
 plt.yticks(())
-plt.title('linear svm')
+plt.title('linear svm, err= '+str(err))
 
 plt.show()
