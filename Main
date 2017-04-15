@@ -11,7 +11,7 @@ neg2 = []
 labels = []
 points = []
 colors = []
-n=0
+n = 0
 for point in training_set:
     n += 1
     points.append([point[1], point[2]])
@@ -43,7 +43,7 @@ Z = Z.reshape(xx.shape)
 plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
 
 # Plot also the training points
-plt.scatter(points[:][0], points[:][1], c=colors, cmap=plt.cm.coolwarm)
+plt.scatter([float(i[0]) for i in points], [float(i[1]) for i in points], c=colors, cmap=plt.cm.coolwarm)
 plt.xlabel('feature1')
 plt.ylabel('feature2')
 plt.xlim(xx.min(), xx.max())
