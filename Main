@@ -26,10 +26,6 @@ for point in training_set:
         neg1.append(point[1])
         neg2.append(point[2])
 
-#t = np.arange(0.0, 200.0, 1)
-#plt.plot(pos1, pos2, 'ro', neg1, neg2, 'bo', t, 'g')
-#plt.show()
-
 C = 1.0  # SVM regularization parameter
 h = 1 # step size in the mesh
 svc = svm.SVC(kernel='linear', C=C).fit(points, labels)
@@ -44,7 +40,8 @@ Z = Z.reshape(xx.shape)
 plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
 
 predicted_labels = svc.predict(points)
-err = accuracy_score(labels, predicted_labels)
+acc = accuracy_score(labels, predicted_labels)
+err = 1-acc
 # Plot also the training points
 plt.scatter([float(i[0]) for i in points], [float(i[1]) for i in points], c=colors, cmap=plt.cm.coolwarm)
 plt.xlabel('feature1')
