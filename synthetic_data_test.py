@@ -42,7 +42,6 @@ Z = svc.predict(np.c_[xx.ravel(), yy.ravel()])
 predicted_labels = svc.predict(dataset)
 acc = accuracy_score(true_labels, predicted_labels)
 err = 1 - acc
-
 # Put the result into a color plot
 Z = Z.reshape(xx.shape)
 plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)

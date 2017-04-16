@@ -12,8 +12,8 @@ n = 600
 la = 0.8
 
 for i in range(0, n):
-    x1 = uniform(0, 100)
-    x2 = uniform(0, 100)
+    x1 = uniform(0, 200)
+    x2 = uniform(0, 200)
     dataset.append([x1, x2])
     if x2 >= x1 - 10:
         labels.append(1.0)
@@ -22,7 +22,7 @@ for i in range(0, n):
         labels.append(-1.0)
         colors.append((0, 0, 1))
 
-true_labels=labels[:]
+true_labels = labels[:]
 
 q_list = []
 g_list = [[0 for j in range(0, 2*n)] for k in range(0, n)]
@@ -52,26 +52,36 @@ w = [0, 0]
 for i in range(0, n):
     w[0] += c[i] * labels[i] * dataset[i][0]
     w[1] += c[i] * labels[i] * dataset[i][1]
+# need to find b
+mindist = 10000
+midpoint = [0, 0]# magic
+for i in range(0, n):
+    for j in range(0, n):
+        if mindist > (dataset[i][0]-dataset[j][0])**2+(dataset[i][1]-dataset[j][1])**2 and labels[i] != labels[j]:
+            mindist = (dataset[i][0]-dataset[j][0])**2+(dataset[i][1]-dataset[j][1])**2
+            midpoint = [(dataset[i][0]+dataset[j][0])/2, (dataset[i][1]+dataset[j][1])/2]
 
-b = labels[0] - np.dot(w, dataset[0])
+print(midpoint)
+b = np.dot(midpoint, w)
+
 
 h = 1  # step size in the mesh
 
-x_min, x_max = 0, 5
-y_min, y_max = 0, 5
+x_min, x_max = 0, 200
+y_min, y_max = 0, 200
 xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
                      np.arange(y_min, y_max, h))
-Z_list = [[0.0 for j in range(x_min, x_max)] for r in range(y_min, y_max)]
+Z_list = []
 for i in range(x_min, x_max):
     for j in range(y_min, y_max):
-        Z_list[i][j] = np.sign(xx[i]*w[0] + yy[j]*w[1]-b)
-print(Z_list)
+        Z_list.append(np.sign(xx[i][j]*w[0] + yy[i][j]*w[1]-b))
 
 predicted_labels = np.sign([np.dot(dataset[i], w)-b for i in range(0, n)])
 acc = accuracy_score(true_labels, predicted_labels)
 err = 1 - acc
 
 # Put the result into a color plot
+
 Z = np.array(Z_list)
 Z = Z.reshape(xx.shape)
 plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
@@ -86,5 +96,4 @@ plt.xticks(())
 plt.yticks(())
 plt.title('linear svm, err=' + str(err))
 
-print(len(dataset))
 plt.show()
