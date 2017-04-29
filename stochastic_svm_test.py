@@ -14,21 +14,20 @@ la = 0.8
 
 for i in range(0, n):
     x1 = uniform(0, 200)
-    x2 = uniform(10, 190)
+    x2 = uniform(0, 200)
+    dataset.append([x1, x2])
     # change
     if x2 >= x1 - 10:
         labels.append(1.0)
         colors.append((1, 0, 0))
-        dataset.append([x1, x2+10])
     else:
         labels.append(-1.0)
         colors.append((0, 0, 1))
-        dataset.append([x1, x2 - 10])
 
 true_labels = labels[:]
 
 # random attack
-for i in range(0, 0):
+for i in range(0, 60):
     nnn = randint(0, 200)
     if labels[nnn] == 1:
         labels[nnn] = -1
@@ -43,7 +42,7 @@ for i in range(0, 0):
 def objective(ww):
     f = 0.0
     for l in range(0, n):
-       f += min(1, labels[l]*(dataset[l][0]*ww[0]+dataset[l][1]*ww[1]+ww[0]))
+       f += min(1, labels[l]*(dataset[l][0]*ww[0]+dataset[l][1]*ww[1]+ww[2]))
     return -f/n
 
 
