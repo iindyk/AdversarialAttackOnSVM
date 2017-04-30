@@ -17,7 +17,7 @@ for i in range(0, n):
     x2 = uniform(0, 200)
     dataset.append([x1, x2])
     # change
-    if x2 >= x1 - 10:
+    if x1-2*x2+10 >= 0:
         labels.append(1.0)
         colors.append((1, 0, 0))
     else:
@@ -39,24 +39,25 @@ for i in range(0, 60):
 # ww[2]=b
 
 
-def objective(ww):
+def objective(x):
     f = 0.0
     for l in range(0, n):
-       f += min(1, labels[l]*(dataset[l][0]*ww[0]+dataset[l][1]*ww[1]+ww[2]))
-    return -f/n
+       f += min(1, labels[l]*(dataset[l][0]*x[0]+dataset[l][1]*x[1]+x[2]))
+
+    return float(-f/n)
 
 
-def constraint1(ww):
-    return ww[0]+ww[1]-1
+def constraint1(x):
+    return abs(x[0]+x[1])-1
 
 #
 # optimize
 b = (-200, 200)
-x0 = (0.5, 0.5, 100)
+x0 = (1, -2, 10)
 bnds = (b, b, b)
 con1 = {'type': 'eq', 'fun': constraint1}
 cons = ([con1])
-solution = minimize(objective, x0, bounds=bnds, constraints=cons)
+solution = minimize(objective, x0, method='SLSQP', bounds=None, constraints=cons)
 h = 1  # step size in the mesh
 
 w = [0, 0]
@@ -154,5 +155,7 @@ plt.title('nu svm(nu=0.4), err=' + str(err))
 
 
 
-
+print(solution.x)
+print(objective(solution.x))
+print(objective([1, -2, 10]))
 plt.show()
