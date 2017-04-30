@@ -27,7 +27,7 @@ for i in range(0, n):
 true_labels = labels[:]
 
 # random attack
-for i in range(0, 60):
+for i in range(0, 0):
     nnn = randint(0, 200)
     if labels[nnn] == 1:
         labels[nnn] = -1
@@ -58,7 +58,7 @@ x0 = (1, -2, 10)
 bnds = (b, b, c)
 con1 = {'type': 'eq', 'fun': constraint1}
 cons = ([con1])
-solution = minimize(objective, x0, method='SLSQP', bounds=bnds)
+solution = minimize(objective, x0, bounds=None)
 h = 1  # step size in the mesh
 
 w = [0, 0]
