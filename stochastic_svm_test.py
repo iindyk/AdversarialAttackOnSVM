@@ -14,7 +14,7 @@ la = 0.8
 
 for i in range(0, n):
     x1 = uniform(0, 200)
-    x2 = uniform(0, 200)
+    x2 = uniform(10, 190)
     dataset.append([x1, x2])
     # change
     if 3*x1-4*x2+10 >= 0:
@@ -159,4 +159,7 @@ plt.title('nu svm(nu=0.4), err=' + str(err))
 print(solution.x)
 print(objective(solution.x))
 print(objective([3.0/50, -4.0/50, 10/50]))
+print(objective([3.0/100, -4.0/100, 10/100]))
+print(objective([3.0/200, -4.0/200, 10/200]))
+print(objective([3.0/400, -4.0/400, 10/400]))
 plt.show()
