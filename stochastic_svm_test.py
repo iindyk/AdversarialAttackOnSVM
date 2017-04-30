@@ -17,7 +17,7 @@ for i in range(0, n):
     x2 = uniform(0, 200)
     dataset.append([x1, x2])
     # change
-    if x1-2*x2+10 >= 0:
+    if 3*x1-4*x2+10 >= 0:
         labels.append(1.0)
         colors.append((1, 0, 0))
     else:
@@ -48,16 +48,17 @@ def objective(x):
 
 
 def constraint1(x):
-    return abs(x[0]+x[1])-1
+    return x[0]**2+x[1]**2-1
 
 #
 # optimize
-b = (-200, 200)
+b = (-1, 1)
+c = (-200, 200)
 x0 = (1, -2, 10)
-bnds = (b, b, b)
+bnds = (b, b, c)
 con1 = {'type': 'eq', 'fun': constraint1}
 cons = ([con1])
-solution = minimize(objective, x0, method='SLSQP', bounds=None, constraints=cons)
+solution = minimize(objective, x0, method='SLSQP', bounds=bnds)
 h = 1  # step size in the mesh
 
 w = [0, 0]
@@ -157,5 +158,5 @@ plt.title('nu svm(nu=0.4), err=' + str(err))
 
 print(solution.x)
 print(objective(solution.x))
-print(objective([1, -2, 10]))
+print(objective([3.0/50, -4.0/50, 10/50]))
 plt.show()
