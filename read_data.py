@@ -1,9 +1,18 @@
 import numpy as np
 
+
 def read_data(path):
-    data = np.genfromtxt("data_clean.txt", delimiter=" ")
-    f2 = open('data_clean.txt', 'w')
-    n = 14  # features number!!!!!
-    #for arr in data:
+    data_str = np.genfromtxt(path, delimiter=" ", dtype=None)
+    data = []
+    n = data_str.size
+    m = int(input('number of features?'))   # features number!!!!!
+    for i in range(0, n):
+        data.append([])
+        data[i].append(float(data_str[i][0]))
+        for j in range(1, m):
+            if str(j)+':' in data_str[i][j]:
+                data[i].append(float(data_str[i][j].replace(str(j)+':', '')))
+            else:
+                data[i].append(np.nan)
 
     return data
