@@ -5,11 +5,12 @@ from sklearn import svm
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import Imputer
 
-from read_data import read_data
+from read_data_libsvm import read_data_libsvm
+from read_data_uci import read_data_uci
 
-ts = read_data("data.txt", delimiter=" ")
-n = ts.size  # number of points
-m = ts[0].size - 1  # number of features
+ts = read_data_uci("data_uci_liver_disorder.txt")
+n = len(ts)  # number of points
+m = len(ts[0]) - 1  # number of features
 training_points = []
 training_labels = []
 test_points = training_points
@@ -29,7 +30,7 @@ def objective(x):
     for l in range(0, n):
         temp = 0.0
         for k in range(0, m):
-            temp += training_points[k]*x[k]
+            temp += training_points[l][k]*x[k]
         f += min(1.0, training_labels[l]*(temp + x[m]))  # x[m]=b
     return float(-f/n)
 x0 = np.asarray([1.0 for p in range(0, m+1)])
