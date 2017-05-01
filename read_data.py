@@ -3,7 +3,7 @@ import numpy as np
 
 def read_data(path):
     m = int(input('number of features?'))  # features number!!!!!
-    f1 = open(path, 'wt')
+    f1 = open(path, 'r')
     f2 = open("data_clean.txt", 'w')
     for line in f1:
         cline = line[:]
