@@ -49,11 +49,12 @@ def objective(x):
         for k in range(0, m):
             temp += training_points[l][k]*x[k]
         f += min(1.0, training_labels[l]*(temp + x[m]))  # x[m]=b
-    return float(-f/n)
+    return float(-f/(2*n/3))
 x0 = np.asarray([1.0 for p in range(0, m+1)])
 solution = minimize(objective, x0, bounds=None)
 w = solution.x[0:m]
 b = solution.x[m]
+print(solution.fun)
 predicted_labelsS_training = np.sign([np.dot(training_points[i], w)+b for i in range(0, len(training_points))])
 predicted_labelsS_test = np.sign([np.dot(test_points[i], w)+b for i in range(0, len(test_points))])
 errS_training = 1 - accuracy_score(training_labels, predicted_labelsS_training)
@@ -94,7 +95,7 @@ print("Soft-margin C-SVM with sigmoid kernel error = "+str(errG))
 '''
 
 # Nu-SVM with linear kernel
-nu = 0.4
+nu = 0.05
 svc = svm.NuSVC(nu=nu, kernel='linear').fit(training_points, training_labels)
 predicted_labelsN_training = svc.predict(training_points)
 predicted_labelsN_test = svc.predict(test_points)
