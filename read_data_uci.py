@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def read_data_uci(path):
+def read_data_uci_ionosphere(path):
     data_arr = np.genfromtxt(path, delimiter=",", dtype=str)
     data_str = data_arr.tolist()
     data_int = []
@@ -15,3 +15,15 @@ def read_data_uci(path):
             data_int[i].append(float(p))
     #print(data_int)
     return data_int
+
+
+def read_data_uci_breast_cancer(path):
+    data_arr = np.genfromtxt(path, delimiter=",", dtype=float)
+    data = data_arr.tolist()
+    for ar in data:
+        if ar.pop() == 2.0:
+            ar.insert(0, 1.0)
+        else:
+            ar.insert(0, -1.0)
+    print(data)
+    return data

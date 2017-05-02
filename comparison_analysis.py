@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import read_data_uci as uci
 from scipy.optimize import minimize
 from sklearn import svm
 from sklearn.metrics import accuracy_score
@@ -9,10 +9,10 @@ from random import randint
 from datetime import datetime
 
 from read_data_libsvm import read_data_libsvm
-from read_data_uci_ionosphere import read_data_uci
 
-print("start at "+ str(datetime.now()))
-ts = read_data_uci("data_uci_ionosphere.txt")
+
+print("start at " + str(datetime.now()))
+ts = uci.read_data_uci_breast_cancer("data_uci_breast_cancer.txt")
 # handling missing features
 '''imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 imp.fit(ts)
