@@ -12,12 +12,12 @@ from read_data_libsvm import read_data_libsvm
 
 
 print("start at " + str(datetime.now()))
-ts = uci.read_data_uci_breast_cancer("data_uci_breast_cancer.txt")
+ts = uci.read_data_uci_spectf("data_uci_spectf.txt")
 # handling missing features
-'''imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
+imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 imp.fit(ts)
 imp.transform(ts)
-'''
+
 n = len(ts)  # number of points
 m = len(ts[0]) - 1  # number of features
 training_points = []
@@ -94,7 +94,7 @@ print("Soft-margin C-SVM with sigmoid kernel error = "+str(errG))
 '''
 
 # Nu-SVM with linear kernel
-nu = 0.5
+nu = 0.4
 svc = svm.NuSVC(nu=nu, kernel='linear').fit(training_points, training_labels)
 predicted_labelsN_training = svc.predict(training_points)
 predicted_labelsN_test = svc.predict(test_points)

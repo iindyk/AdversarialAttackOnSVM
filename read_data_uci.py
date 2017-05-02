@@ -13,7 +13,6 @@ def read_data_uci_ionosphere(path):
             data_int[i].append(-1.0)
         for p in data_str[i]:
             data_int[i].append(float(p))
-    #print(data_int)
     return data_int
 
 
@@ -21,9 +20,30 @@ def read_data_uci_breast_cancer(path):
     data_arr = np.genfromtxt(path, delimiter=",", dtype=float)
     data = data_arr.tolist()
     for ar in data:
+        ar[0] -= 1000000
+        ar[0] /= 1000
         if ar.pop() == 2.0:
             ar.insert(0, 1.0)
         else:
             ar.insert(0, -1.0)
-    print(data)
+    return data
+
+
+def read_data_uci_survival(path):
+    data_arr = np.genfromtxt(path, delimiter=",", dtype=float)
+    data = data_arr.tolist()
+    for ar in data:
+        if ar.pop() == 1.0:
+            ar.insert(0, 1.0)
+        else:
+            ar.insert(0, -1.0)
+    return data
+
+
+def read_data_uci_spectf(path):
+    data_arr = np.genfromtxt(path, delimiter=",", dtype=float)
+    data = data_arr.tolist()
+    for ar in data:
+        if ar[0] == 0:
+            ar[0] = -1.0
     return data
