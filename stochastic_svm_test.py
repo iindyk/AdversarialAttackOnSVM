@@ -10,6 +10,7 @@ dataset = []
 labels = []
 colors = []
 n = 600
+m = 2
 la = 0.8
 
 for i in range(0, n):
@@ -27,7 +28,7 @@ for i in range(0, n):
 true_labels = labels[:]
 
 # random attack
-for i in range(0, 0):
+for i in range(0, 60):
     nnn = randint(0, 200)
     if labels[nnn] == 1:
         labels[nnn] = -1
@@ -40,11 +41,15 @@ for i in range(0, 0):
 
 
 def objective(x):
-    f = 0.0
+    av = 0.0
+    dev = 0.0
     for l in range(0, n):
-       f += min(1, labels[l]*(dataset[l][0]*x[0]+dataset[l][1]*x[1]+x[2]))
-
-    return float(-f/n)
+        temp = 0.0
+        for k in range(0, m):
+            temp += dataset[l][k]*x[k]
+        av += (labels[l]*(temp + x[m]))/n
+        dev += ((labels[l]*(temp + x[m]))**2)/n  # x[m]=b
+    return dev/(dev+av**2)
 
 
 def constraint1(x):
@@ -123,43 +128,9 @@ plt.ylim(yy.min(), yy.max())
 plt.xticks(())
 plt.yticks(())
 plt.title('linear(soft with C=1) svm, err=' + str(err))
-'''
-svc1 = svm.NuSVC(nu=0.5,  kernel='rbf', degree=3, gamma='auto', coef0=0.0, shrinking=True, probability=False, tol=0.001,\
-                 cache_size=200, class_weight=None, verbose=False, max_iter=-1, decision_function_shape=None, \
-                 random_state=None).fit(dataset, labels)
-x_min, x_max = 0, 200
-y_min, y_max = 0, 200
-xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
-                     np.arange(y_min, y_max, h))
-Z = svc1.predict(np.c_[xx.ravel(), yy.ravel()])
-
-predicted_labels = svc1.predict(dataset)
-acc = accuracy_score(true_labels, predicted_labels, normalize=False)
-err = 1 - float(acc)/n
-# Put the result into a color plot
-Z = Z.reshape(xx.shape)
-plt.subplot(212)
-plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
-
-# Plot also the training points
-plt.scatter([float(i[0]) for i in dataset], [float(i[1]) for i in dataset], c=colors, cmap=plt.cm.coolwarm)
-plt.xlabel('feature1')
-plt.ylabel('feature2')
-plt.xlim(xx.min(), xx.max())
-plt.ylim(yy.min(), yy.max())
-plt.xticks(())
-plt.yticks(())
-plt.title('nu svm(nu=0.4), err=' + str(err))
-
-'''
-
-
 
 
 print(solution.x)
 print(objective(solution.x))
-print(objective([3.0/50, -4.0/50, 10/50]))
-print(objective([3.0/100, -4.0/100, 10/100]))
-print(objective([3.0/200, -4.0/200, 10/200]))
-print(objective([3.0/400, -4.0/400, 10/400]))
+
 plt.show()
