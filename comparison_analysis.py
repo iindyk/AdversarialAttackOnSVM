@@ -49,7 +49,7 @@ def objective(x):
         for k in range(0, m):
             temp += training_points[l][k]*x[k]
         f += min(1.0, training_labels[l]*(temp + x[m]))  # x[m]=b
-    return float(-f/(2*n/3))
+    return float(-f/len(training_points))
 x0 = np.asarray([1.0 for p in range(0, m+1)])
 solution = minimize(objective, x0, bounds=None)
 w = solution.x[0:m]
