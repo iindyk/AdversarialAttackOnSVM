@@ -31,21 +31,37 @@ for i in range(0, 60):
         labels[i] = 1
 
 
-def objective(x):
+def objective_cheb(x):
     av = 0.0
-    dev = 0.0
-    for l in range(0, n):
+    for l in range(0, len(dataset)):
         temp = 0.0
         for k in range(0, m):
             temp += dataset[l][k]*x[k]
-        av += (labels[l]*(temp + x[m]))/n
-        dev += ((labels[l]*(temp + x[m]))**2)/n  # x[m]=b
-    return dev/(dev+av**2)
+        av += (labels[l]*(temp + x[m]))  # x[m]=b
+    return -av/len(dataset)
+
+
+def constr_cheb(x):
+    dev = 0.0
+    for l in range(0, len(dataset)):
+        temp = 0.0
+        for k in range(0, m):
+            temp += dataset[l][k] * x[k]
+        dev += ((labels[l] * (temp + x[m])) ** 2)  # x[m]=b
+    return dev - 1
 
 # optimize
-x0 = np.asarray([1 for i in range(0, m+1)])
-solution = minimize(objective, x0, bounds=None)
+con1 = {'type': 'eq', 'fun': constr_cheb}
+cons = ([con1])
+options = {'maxiter': 200}
+x0 = np.asarray([1.0 for p in range(0, m+1)])
+solution = minimize(objective_cheb, x0, bounds=None, constraints=cons, options=options)
 h = 1  # step size in the mesh
+
+print(solution.fun)
+print(solution.success)
+print(solution.message)
+print(solution.nit)
 
 w = solution.x[0:m]
 b = solution.x[m]

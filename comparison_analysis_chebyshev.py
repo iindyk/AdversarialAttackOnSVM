@@ -12,7 +12,7 @@ from read_data_libsvm import read_data_libsvm
 
 
 print("start at " + str(datetime.now()))
-ts = uci.read_data_uci_spectf("data_uci_spectf.txt")
+ts = uci.read_data_uci_ionosphere("data_uci_ionosphere.txt")
 # handling missing features
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 imp.fit(ts)
@@ -41,21 +41,48 @@ for i in range(0, n):
 
 
 # stochastic SVM
-def objective(x):
+def objective_cheb(x):
     av = 0.0
-    dev = 0.0
     for l in range(0, len(training_points)):
         temp = 0.0
         for k in range(0, m):
             temp += training_points[l][k]*x[k]
-        av += (training_labels[l]*(temp + x[m]))
-        dev += ((training_labels[l]*(temp + x[m]))**2)  # x[m]=b
-    return dev*len(training_points)/(dev*len(training_points)+av**2)
+        av += (training_labels[l]*(temp + x[m]))  # x[m]=b
+    return -av/len(training_points)
+
+
+def constr_cheb(x):
+    dev = 0.0
+    for l in range(0, len(training_points)):
+        temp = 0.0
+        for k in range(0, m):
+            temp += training_points[l][k] * x[k]
+        dev += ((training_labels[l] * (temp + x[m])) ** 2)  # x[m]=b
+    return dev - 1
+
+
+def objective_prob(x):
+    f = 0.0
+    for l in range(0, len(training_points)):
+        temp = 0.0
+        for k in range(0, m):
+            temp += training_points[l][k]*x[k]
+        if training_labels[l]*(temp+x[m]) <= 0:
+            f += 1
+    return f/len(training_points)
+
+con1 = {'type': 'eq', 'fun': constr_cheb}
+cons = ([con1])
+options = {'maxiter': 200}
 x0 = np.asarray([1.0 for p in range(0, m+1)])
-solution = minimize(objective, x0, bounds=None)
+solution = minimize(objective_cheb, x0, bounds=None, constraints=cons, options=options)
 w = solution.x[0:m]
 b = solution.x[m]
 print(solution.fun)
+print(solution.success)
+print(solution.message)
+print(solution.nit)
+
 predicted_labelsS_training = np.sign([np.dot(training_points[i], w)+b for i in range(0, len(training_points))])
 predicted_labelsS_test = np.sign([np.dot(test_points[i], w)+b for i in range(0, len(test_points))])
 errS_training = 1 - accuracy_score(training_labels, predicted_labelsS_training)
