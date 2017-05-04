@@ -48,10 +48,10 @@ def constr_cheb(x):
         for k in range(0, m):
             temp += dataset[l][k] * x[k]
         dev += ((labels[l] * (temp + x[m])) ** 2)  # x[m]=b
-    return dev - 1
+    return 1 - dev
 
 # optimize
-con1 = {'type': 'eq', 'fun': constr_cheb}
+con1 = {'type': 'ineq', 'fun': constr_cheb}
 cons = ([con1])
 options = {'maxiter': 200}
 x0 = np.asarray([1.0 for p in range(0, m+1)])
