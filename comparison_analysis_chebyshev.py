@@ -6,7 +6,7 @@ from sklearn.metrics import accuracy_score
 from random import randint
 
 
-ts = uci.read_data_uci_survival("data_uci_survival.txt")
+ts = uci.read_data_uci_spectf("data_uci_spectf.txt")
 
 n = len(ts)  # number of points
 m = len(ts[0]) - 1  # number of features
@@ -84,7 +84,7 @@ def constr_cheb_semi(x):
         for k in range(0, m):
             temp += training_points[l][k] * x[k]
         av += (training_labels[l] * (temp + x[m]))/len(training_points)
-        semidev += (max(0.0, (-training_labels[l] * (temp + x[m]) + av)) ** 2)/len(training_points)  # x[m]=b
+        semidev += ((max(0.0, (-training_labels[l] * (temp + x[m]) + av))) ** 2)/len(training_points)  # x[m]=b
     return 1 - semidev
 
 
@@ -109,7 +109,7 @@ errS = []
 errCD = []
 errCS = []
 errC = []
-for i in range(0, 100):
+for i in range(0, 1000):
     test_points = []
     test_labels = []
     test_indices = []  # choosing indices for test set
