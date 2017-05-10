@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import minimize
+import matplotlib.pyplot as plt
 
 
 assets = np.array([[0.004, -0.025, 0.009, 0.012, 0.047, 0.006, -0.019, -0.037, 0.025, 0.021, 0.017, 0.019],
@@ -18,10 +19,13 @@ m = len(assets)  # number of assets
 p = 1.0/n  # probability of scenario
 alpha = 0.3  # parameter of AVaR
 capital = 100000  # initial capital
-c = 0.25  # parameter for parts b) and c)
+cs = [0.25, 0.5, 0.75]  # parameters for parts b) and c)
 q = [1 for j in range(0, m)]  # assets prices
 w0 = [10000 for k in range(0, m)]  # initial guess for optimization
 # w - weight list - result
+means = []  # mean values of optimal assets (for graph)
+devs = []  # deviations of optimal assets (for graph)
+colors = []  # colors of points for graph
 
 
 # constraint on capital function
@@ -55,36 +59,59 @@ if not sol_a.success:
 optimal_asset_a = np.array([np.dot(sol_a.x, assets[:, j]) for j in range(0, n)])
 print("part a) solution(weight vector) is "+str(sol_a.x) + "; use of capital = " + str(np.sum(sol_a.x)))
 print("mean of optimal asset = " + str(np.mean(optimal_asset_a)) + " stdev = " + str(np.std(optimal_asset_a)))
+means.append(np.mean(optimal_asset_a))
+devs.append(np.std(optimal_asset_a))
+colors.append((0, 1, 0))
 
 
-#  part b
-def objective_b(w):
-    return -(1-c)*np.mean(np.array([np.dot(w, assets[:, j]) for j in range(0, n)])) + c*avar(w)
-sol_b = minimize(objective_b, w0, bounds=bounds, constraints=cons)
-if not sol_b.success:
-    print(sol_b.message)
-# print(sol_b.nit)
-optimal_asset_b = np.array([np.dot(sol_b.x, assets[:, j]) for j in range(0, n)])
-print("part b) solution(weight vector) is "+str(sol_b.x) + "; use of capital = "+str(np.sum(sol_b.x)))
-print("mean of optimal asset = " + str(np.mean(optimal_asset_b)) + " stdev = " + str(np.std(optimal_asset_b)))
+for c in cs:
+    #  part b
+    def objective_b(w):
+        return -(1-c)*np.mean(np.array([np.dot(w, assets[:, j]) for j in range(0, n)])) + c*avar(w)
+    sol_b = minimize(objective_b, w0, bounds=bounds, constraints=cons)
+    if not sol_b.success:
+        print(sol_b.message)
+    # print(sol_b.nit)
+    optimal_asset_b = np.array([np.dot(sol_b.x, assets[:, j]) for j in range(0, n)])
+    print("part b), c = "+str(c)+" solution(weight vector) is "+str(sol_b.x) + "; use of capital = "+str(np.sum(sol_b.x)))
+    print("mean of optimal asset = " + str(np.mean(optimal_asset_b)) + " stdev = " + str(np.std(optimal_asset_b)))
+    means.append(np.mean(optimal_asset_b))
+    devs.append(np.std(optimal_asset_b))
+    colors.append((0, 0, 1))
+
+    # part c
+    def lower_semi_dev(w):
+        temp = 0
+        mean = np.mean(np.array([np.dot(w, assets[:, j]) for j in range(0, n)]))
+        for i in range(0, n):
+            temp += p*max(0, mean - np.dot(w,assets[:, i]))
+        return temp
 
 
-# part c
-def lower_semi_dev(w):
-    temp = 0
-    mean = np.mean(np.array([np.dot(w, assets[:, j]) for j in range(0, n)]))
-    for i in range(0, n):
-        temp += p*max(0, mean - np.dot(w,assets[:, i]))
-    return temp
+    def objective_c(w):
+        return -np.mean(np.array([np.dot(w, assets[:, j]) for j in range(0, n)])) + c*lower_semi_dev(w)
 
+    sol_c = minimize(objective_c, w0, bounds=bounds, constraints=cons)
+    if not sol_c.success:
+        print(sol_c.message)
+    # print(sol_c.nit)
+    optimal_asset_c = np.array([np.dot(sol_c.x, assets[:, j]) for j in range(0, n)])
+    print("part c), c = "+str(c)+" solution(weight vector) is "+str(sol_c.x) + "; use of capital = "+str(np.sum(sol_c.x)))
+    print("mean of optimal asset = " + str(np.mean(optimal_asset_c)) + " stdev = " + str(np.std(optimal_asset_c)))
+    means.append(np.mean(optimal_asset_c))
+    devs.append(np.std(optimal_asset_c))
+    colors.append((1, 0, 0))
 
-def objective_c(w):
-    return -np.mean(np.array([np.dot(w, assets[:, j]) for j in range(0, n)])) + c*lower_semi_dev(w)
-
-sol_c = minimize(objective_c, w0, bounds=bounds, constraints=cons)
-if not sol_c.success:
-    print(sol_c.message)
-# print(sol_c.nit)
-optimal_asset_c = np.array([np.dot(sol_c.x, assets[:, j]) for j in range(0, n)])
-print("part c) solution(weight vector) is "+str(sol_c.x) + "; use of capital = "+str(np.sum(sol_c.x)))
-print("mean of optimal asset = " + str(np.mean(optimal_asset_c)) + " stdev = " + str(np.std(optimal_asset_c)))
+part_a = plt.scatter([means[0]], [devs[0]], c=[colors[0]])
+part_b = plt.scatter([means[2*i+1] for i in range(0, 3)], [devs[2*i+1] for i in range(0, 3)],
+                     c=[colors[2*i+1] for i in range(0, 3)])
+part_c = plt.scatter([means[2*i+2] for i in range(0, 3)], [devs[2*i+2] for i in range(0, 3)],
+                     c=[colors[2*i+2] for i in range(0, 3)])
+plt.legend([part_a, part_b, part_c], ['part a)', 'part b)', 'part c)'])
+plt.xlabel('mean')
+plt.ylabel('variance')
+# annotation
+for c in cs:
+    plt.annotate('c=' + str(c), (means[1+2*cs.index(c)], devs[1+2*cs.index(c)]))
+    plt.annotate('c=' + str(c), (means[2+2*cs.index(c)], devs[2+2*cs.index(c)]))
+plt.show()
