@@ -51,7 +51,7 @@ def avar(w):
 sol_a = minimize(avar, w0, bounds=bounds, constraints=cons)
 if not sol_a.success:
     print(sol_a.message)
-print(sol_a.nit)
+# print(sol_a.nit)
 optimal_asset_a = np.array([np.dot(sol_a.x, assets[:, j]) for j in range(0, n)])
 print("part a) solution(weight vector) is "+str(sol_a.x) + "; use of capital = " + str(np.sum(sol_a.x)))
 print("mean of optimal asset = " + str(np.mean(optimal_asset_a)) + " stdev = " + str(np.std(optimal_asset_a)))
@@ -63,7 +63,7 @@ def objective_b(w):
 sol_b = minimize(objective_b, w0, bounds=bounds, constraints=cons)
 if not sol_b.success:
     print(sol_b.message)
-print(sol_b.nit)
+# print(sol_b.nit)
 optimal_asset_b = np.array([np.dot(sol_b.x, assets[:, j]) for j in range(0, n)])
 print("part b) solution(weight vector) is "+str(sol_b.x) + "; use of capital = "+str(np.sum(sol_b.x)))
 print("mean of optimal asset = " + str(np.mean(optimal_asset_b)) + " stdev = " + str(np.std(optimal_asset_b)))
@@ -84,7 +84,7 @@ def objective_c(w):
 sol_c = minimize(objective_c, w0, bounds=bounds, constraints=cons)
 if not sol_c.success:
     print(sol_c.message)
-print(sol_c.nit)
+# print(sol_c.nit)
 optimal_asset_c = np.array([np.dot(sol_c.x, assets[:, j]) for j in range(0, n)])
 print("part c) solution(weight vector) is "+str(sol_c.x) + "; use of capital = "+str(np.sum(sol_c.x)))
 print("mean of optimal asset = " + str(np.mean(optimal_asset_c)) + " stdev = " + str(np.std(optimal_asset_c)))
