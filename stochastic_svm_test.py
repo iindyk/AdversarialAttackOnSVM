@@ -12,6 +12,7 @@ colors = []
 n = 600
 m = 2
 la = 0.8
+C = 1.0  # SVM regularization parameter
 
 for i in range(0, n):
     x1 = uniform(0, 200)
@@ -42,26 +43,31 @@ for i in range(0, 60):
 
 def objective(x):
     av = 0.0
-    dev = 0.0
     for l in range(0, n):
-        temp = 0.0
-        for k in range(0, m):
-            temp += dataset[l][k]*x[k]
-        av += (labels[l]*(temp + x[m]))/n
-        dev += ((labels[l]*(temp + x[m]))**2)/n  # x[m]=b
-    return dev/(dev+av**2)
+        av += labels[i] * max(1-labels[l]*(np.dot(dataset[l], x[:m])+x[m]),0)  # x[m]=b
+    return abs(av)
 
 
 def constraint1(x):
-    return x[0]**2+x[1]**2-1
+    summ = 0.0
+    for s in range(0, n):
+        summ += labels[s]*dataset[s][0]*max(1-labels[s]*(np.dot(dataset[s], x[:m])+x[m]),0)
+    return x[0]-C*(1.0/n)*summ
 
+
+def constraint2(x):
+    summ = 0.0
+    for s in range(0, n):
+        summ += labels[s]*dataset[s][1]*max(1-labels[s]*(np.dot(dataset[s], x[:m])+x[m]),0)
+    return x[1]-C*(1.0/n)*summ
 #
 # optimize
 b = (-1, 1)
 c = (-200, 200)
-x0 = (1, -2, 10)
+x0 = np.array([1, -2, 10])
 bnds = (b, b, c)
 con1 = {'type': 'eq', 'fun': constraint1}
+con2 = {'type': 'eq', 'fun': constraint2}
 cons = ([con1])
 solution = minimize(objective, x0, bounds=None)
 h = 1  # step size in the mesh
@@ -102,7 +108,7 @@ plt.yticks(())
 plt.title('stochastic svm, err=' + str(err))
 
 
-C = 1.0  # SVM regularization parameter
+
 h = 1  # step size in the mesh
 svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
 x_min, x_max = 0, 200
