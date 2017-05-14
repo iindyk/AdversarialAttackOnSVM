@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, broyden1, root
 
 from random import uniform, randint
 from sklearn import svm
@@ -41,11 +41,21 @@ for i in range(0, 60):
 # ww[2]=b
 
 
+def F(x):
+    ret = []
+    ret.append(constraint1(x))
+    ret.append(constraint2(x))
+    ret.append(objective(x))
+    return ret
+
+
 def objective(x):
     av = 0.0
     for l in range(0, n):
-        av += labels[i] * max(1-labels[l]*(np.dot(dataset[l], x[:m])+x[m]),0)  # x[m]=b
-    return abs(av)
+        av += labels[l] if labels[l]*(np.dot(dataset[l], x[:m])+x[m]) < 1 else 0
+        #av += labels[l] * max(1-labels[l]*(np.dot(dataset[l], x[:m])+x[m]),0)  # x[m]=b
+    return av/n
+
 
 def obj1(x):
     return np.dot(x, x)
@@ -54,17 +64,18 @@ def obj1(x):
 def constraint1(x):
     summ = 0.0
     for s in range(0, n):
-        summ += labels[s]*dataset[s][0]*max(1-labels[s]*(np.dot(dataset[s], x[:m])+x[m]),0)
+        summ += labels[s] * dataset[s][0] * (1 if labels[s]*(np.dot(dataset[s], x[:m])+x[m]) < 1 else 0)
+        #summ += labels[s]*dataset[s][0]*max(1-labels[s]*(np.dot(dataset[s], x[:m])+x[m]),0)
     return x[0]-C*(1.0/n)*summ
 
 
 def constraint2(x):
     summ = 0.0
     for s in range(0, n):
-        summ += labels[s]*dataset[s][1]*max(1-labels[s]*(np.dot(dataset[s], x[:m])+x[m]),0)
+        summ += labels[s] * dataset[s][1] * (1 if labels[s] * (np.dot(dataset[s], x[:m]) + x[m]) < 1 else 0)
+        #summ += labels[s]*dataset[s][1]*max(1-labels[s]*(np.dot(dataset[s], x[:m])+x[m]),0)
     return x[1]-C*(1.0/n)*summ
-#
-# optimize
+'''# optimize
 b = (-1, 1)
 c = (-200, 200)
 x0 = np.array([1, -2, 10])
@@ -74,8 +85,9 @@ con2 = {'type': 'eq', 'fun': constraint2}
 con3 = {'type': 'eq', 'fun': objective}
 cons = ([con1, con2, con3])
 solution = minimize(obj1, x0, bounds=None, constraints=cons)
+'''
 h = 1  # step size in the mesh
-
+solution = root(F, np.array([3, -4, 10]), tol=1e-13)
 w = [0, 0]
 w[0] = solution.x[0]
 w[1] = solution.x[1]
