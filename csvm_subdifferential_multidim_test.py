@@ -37,21 +37,24 @@ def F(x):
     for i in range(0, m):
         summ = 0.0
         for j in range(0, n):
-            summ += labels[j] * dataset[j][i] * (1 if labels[j]*(np.dot(dataset[j], x[:m])+x[m]) < 1 else 0)
+            # summ += labels[j] * dataset[j][i] * (1 if labels[j]*(np.dot(dataset[j], x[:m])+x[m]) < 1 else 0)
             # summ += labels[j]*dataset[j][i]*max(1-labels[j]*(np.dot(dataset[j], x[:m])+x[m]),0)
-            # summ += labels[j] * dataset[j][i] * (1 - labels[j] * (np.dot(dataset[j], x[:m]) + x[m]))
+            summ += labels[j] * dataset[j][i] * (1 - labels[j] * (np.dot(dataset[j], x[:m]) + x[m]))
         res.append(x[i] - C*(1.0/n)*summ)
     av = 0.0
     for l in range(0, n):
-        av += labels[l] if labels[l]*(np.dot(dataset[l], x[:m])+x[m]) < 1 else 0
+        # av += labels[l] if labels[l]*(np.dot(dataset[l], x[:m])+x[m]) < 1 else 0
         # av += labels[l] * max(1-labels[l]*(np.dot(dataset[l], x[:m])+x[m]),0)  # x[m]=b
-        # av += labels[l] * (1 - labels[l] * (np.dot(dataset[l], x[:m]) + x[m]))
+        av += labels[l] * (1 - labels[l] * (np.dot(dataset[l], x[:m]) + x[m]))
     res.append(av/n)
     return res
 
 # optimize
 x0 = np.asarray([1 for i in range(0, m+1)])
 solution = root(F, x0, tol=1e-13)
+print(solution.fun)
+print(solution.success)
+print(solution.message)
 h = 1  # step size in the mesh
 
 w = solution.x[0:m]
@@ -73,15 +76,15 @@ errC = 1 - accC
 erS = 0
 erC = 0
 diff = 0
-for k in range(0,n):
-    if predicted_labelsS[k]!=labels[k]:
+for k in range(0, n):
+    if predicted_labelsS[k] != labels[k]:
         erS += 1
-    if predicted_labelsC[k]!=labels[k]:
+    if predicted_labelsC[k] != labels[k]:
         erC += 1
     if predicted_labelsS[k] != predicted_labelsC[k]:
         diff += 1
 
-print("c-svm error "+str(errC))
-print("st svm errors "+str(erS))
-print("c-svm errors "+ str(erC))
-print("diff "+str(diff))
+print("c-svm error " + str(errC))
+print("st svm errors " + str(erS))
+print("c-svm errors " + str(erC))
+print("diff " + str(diff))
