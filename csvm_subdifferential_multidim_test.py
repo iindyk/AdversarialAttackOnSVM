@@ -64,7 +64,7 @@ predicted_labelsS = np.sign([np.dot(dataset[i], w)+b for i in range(0, n)])
 accS = accuracy_score(labels, predicted_labelsS)
 
 errS = 1 - accS
-print("stoch svm error "+str(errS))
+print("approximation svm error "+str(errS))
 
 
 svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
