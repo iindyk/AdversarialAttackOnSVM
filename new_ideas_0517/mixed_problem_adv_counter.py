@@ -9,16 +9,18 @@ import matplotlib.pyplot as plt
 dataset = []
 labels = []
 colors = []
-n = 200  # training set size (must be larger than m to avoid fuck up)
+n = 400  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
-a = 0  # random attack size
+a = 60  # random attack size
 alpha = 10.0  # classifier objective weight
-eps = 0.1  # upper bound for norm of h
+A = 10
+B = 110
+eps = 0.1*(B-A)  # upper bound for norm of h
 for i in range(0, n):
     point = []
     for j in range(0, m):
-        point.append(uniform(0, 100))
+        point.append(uniform(A, B))
     dataset.append(point)
     # change
     if sum([p**2 for p in point]) >= 75**2:
@@ -46,7 +48,7 @@ def objective(x):
 def adv_obj(x):
     av = 0.0
     for i in range(0, n):
-        av += max(labels[i]*(np.dot(dataset[i], x[:m])+x[m]), -1)
+        av += max(1+labels[i]*(np.dot(dataset[i], x[:m])+x[m]), 0)
     return av/n
 
 
@@ -115,8 +117,8 @@ print("c-svm error " + str(errC))
 
 #  plots
 if m == 2:
-    x_min, x_max = 0, 100
-    y_min, y_max = 0, 100
+    x_min, x_max = int(A-eps)-1, int(B+eps)+1
+    y_min, y_max = int(A-eps)-1, int(B+eps)+1
     xx, yy = np.meshgrid(np.arange(x_min, x_max, 1.0),
                          np.arange(y_min, y_max, 1.0))
     Z_list = []
@@ -125,7 +127,7 @@ if m == 2:
             Z_list.append(np.sign(xx[i][j]*w[0] + yy[i][j]*w[1]+b))
     Z = np.array(Z_list)
     Z = Z.reshape(xx.shape)
-    plt.subplot(121)
+    plt.subplot(221)
     plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
     plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
     plt.xlabel('feature1')
@@ -135,12 +137,10 @@ if m == 2:
     plt.xticks(())
     plt.yticks(())
     plt.title('mixed svm, err=' + str(errS))
-
     Z = svc.predict(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
-    plt.subplot(122)
+    plt.subplot(222)
     plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
-
     # Plot also the training points
     plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
     plt.xlabel('feature1')
@@ -150,5 +150,21 @@ if m == 2:
     plt.xticks(())
     plt.yticks(())
     plt.title('linear(soft with C=1) svm, err=' + str(errC))
-
+    plt.subplot(223)
+    svc1 = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
+    predicted_labelsC = svc1.predict(dataset)
+    Z = svc1.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+    plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
+    plt.scatter([float(i[0]) for i in dataset], [float(i[1]) for i in dataset], c=colors,
+                cmap=plt.cm.coolwarm)
+    plt.xlabel('feature1')
+    plt.ylabel('feature2')
+    plt.xlim(xx.min(), xx.max())
+    plt.ylim(yy.min(), yy.max())
+    plt.xticks(())
+    plt.yticks(())
+    predicted_labelsCO = svc1.predict(dataset)
+    errCO = 1 - accuracy_score(labels, predicted_labelsCO)
+    plt.title('linear(soft with C=1) svm on orig dataset, err=' + str(errCO))
     plt.show()
