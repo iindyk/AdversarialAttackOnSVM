@@ -1,15 +1,12 @@
+from datetime import datetime
+from random import randint
+
 import numpy as np
-import read_data_uci as uci
 from scipy.optimize import minimize
 from sklearn import svm
 from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import Imputer
-from random import randint
 
-from datetime import datetime
-
-from read_data_libsvm import read_data_libsvm
-
+from datasets_parsers import read_data_uci as uci
 
 print("start at " + str(datetime.now()))
 ts = uci.read_data_uci_survival("data_uci_survival.txt")

@@ -1,10 +1,11 @@
+from random import randint
+
 import numpy as np
-import read_data_uci as uci
 from scipy.optimize import minimize
 from sklearn import svm
 from sklearn.metrics import accuracy_score
-from random import randint
 
+from datasets_parsers import read_data_uci as uci
 
 ts = uci.read_data_uci_spectf("data_uci_spectf.txt")
 

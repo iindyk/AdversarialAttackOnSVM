@@ -134,10 +134,7 @@ plt.title('stochastic svm, err=' + str(err))
 
 h = 1  # step size in the mesh
 svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
-x_min, x_max = 0, 200
-y_min, y_max = 0, 200
-xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
-                     np.arange(y_min, y_max, h))
+
 Z = svc.predict(np.c_[xx.ravel(), yy.ravel()])
 
 predicted_labels = svc.predict(dataset)
