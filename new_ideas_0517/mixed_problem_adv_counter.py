@@ -13,7 +13,7 @@ n = 200  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
 a = 0  # random attack size
-alpha = 100.0  # classifier objective weight
+alpha = 10.0  # classifier objective weight
 eps = 0.1  # upper bound for norm of h
 for i in range(0, n):
     point = []
@@ -68,9 +68,9 @@ x0 = np.array([1 for i in range(0, m+n+1)])
 con1 = {'type': 'ineq', 'fun': constraint}
 cons = ([con1])
 solution = minimize(objective, x0, bounds=None, method='SLSQP', constraints=cons)
+print(solution.success)
 print(solution.message)
 print(solution.nit)
-print(constraint(solution.x))
 w = solution.x[:m]
 b = solution.x[m]
 g = solution.x[m+1:m+n+1]
@@ -93,9 +93,8 @@ con_h = {'type': 'eq', 'fun': constr_h}
 cons_h = ([con_h])
 solution_h = minimize(obj_h, h0, bounds=None, constraints=cons_h)
 print(solution_h.success)
-print(solution_h.nit)
 print(solution_h.message)
-print(solution_h.x)
+print(solution_h.nit)
 h = solution_h.x
 
 dataset_infected = []
@@ -107,7 +106,7 @@ for i in range(0, n):
 
 predicted_labelsS = np.sign([np.dot(dataset_infected[i], w)+b for i in range(0, n)])
 errS = 1 - accuracy_score(labels, predicted_labelsS)
-print("approximation svm error "+str(errS))
+print("mixed svm error "+str(errS))
 
 svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
 predicted_labelsC = svc.predict(dataset_infected)
@@ -115,41 +114,41 @@ errC = 1 - accuracy_score(labels, predicted_labelsC)
 print("c-svm error " + str(errC))
 
 #  plots
-x_min, x_max = 0, 100
-y_min, y_max = 0, 100
-xx, yy = np.meshgrid(np.arange(x_min, x_max, 1.0),
-                     np.arange(y_min, y_max, 1.0))
-Z_list = []
-for i in range(x_min, x_max):
-    for j in range(y_min, y_max):
-        Z_list.append(np.sign(xx[i][j]*w[0] + yy[i][j]*w[1]+b))
-Z = np.array(Z_list)
-Z = Z.reshape(xx.shape)
-plt.subplot(121)
-plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
-plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
-plt.xlabel('feature1')
-plt.ylabel('feature2')
-plt.xlim(xx.min(), xx.max())
-plt.ylim(yy.min(), yy.max())
-plt.xticks(())
-plt.yticks(())
-plt.title('stochastic svm, err=' + str(errS))
+if m == 2:
+    x_min, x_max = 0, 100
+    y_min, y_max = 0, 100
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, 1.0),
+                         np.arange(y_min, y_max, 1.0))
+    Z_list = []
+    for i in range(x_min, x_max):
+        for j in range(y_min, y_max):
+            Z_list.append(np.sign(xx[i][j]*w[0] + yy[i][j]*w[1]+b))
+    Z = np.array(Z_list)
+    Z = Z.reshape(xx.shape)
+    plt.subplot(121)
+    plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
+    plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
+    plt.xlabel('feature1')
+    plt.ylabel('feature2')
+    plt.xlim(xx.min(), xx.max())
+    plt.ylim(yy.min(), yy.max())
+    plt.xticks(())
+    plt.yticks(())
+    plt.title('mixed svm, err=' + str(errS))
 
+    Z = svc.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+    plt.subplot(122)
+    plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
 
-Z = svc.predict(np.c_[xx.ravel(), yy.ravel()])
-Z = Z.reshape(xx.shape)
-plt.subplot(122)
-plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
+    # Plot also the training points
+    plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
+    plt.xlabel('feature1')
+    plt.ylabel('feature2')
+    plt.xlim(xx.min(), xx.max())
+    plt.ylim(yy.min(), yy.max())
+    plt.xticks(())
+    plt.yticks(())
+    plt.title('linear(soft with C=1) svm, err=' + str(errC))
 
-# Plot also the training points
-plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
-plt.xlabel('feature1')
-plt.ylabel('feature2')
-plt.xlim(xx.min(), xx.max())
-plt.ylim(yy.min(), yy.max())
-plt.xticks(())
-plt.yticks(())
-plt.title('linear(soft with C=1) svm, err=' + str(errC))
-
-plt.show()
+    plt.show()
