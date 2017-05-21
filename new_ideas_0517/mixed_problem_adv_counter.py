@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 dataset = []
 labels = []
 colors = []
-n = 400  # training set size (must be larger than m to avoid fuck up)
+n = 200  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
-a = 60  # random attack size
-alpha = 10.0  # classifier objective weight
+a = 20  # random attack size
+alpha = 1.35  # classifier objective weight
 A = 10
 B = 110
 eps = 0.1*(B-A)  # upper bound for norm of h
@@ -34,8 +34,10 @@ for i in range(0, n):
 for i in range(0, a):
     if labels[i] == 1:
         labels[i] = -1
+        colors[i] = (0, 0, 1)
     else:
         labels[i] = 1
+        colors[i] = (1, 0, 0)
 
 
 # x[:m] - w
@@ -117,8 +119,8 @@ print("c-svm error " + str(errC))
 
 #  plots
 if m == 2:
-    x_min, x_max = int(A-eps)-1, int(B+eps)+1
-    y_min, y_max = int(A-eps)-1, int(B+eps)+1
+    x_min, x_max = A-10, B+10
+    y_min, y_max = A-10, B+10
     xx, yy = np.meshgrid(np.arange(x_min, x_max, 1.0),
                          np.arange(y_min, y_max, 1.0))
     Z_list = []
