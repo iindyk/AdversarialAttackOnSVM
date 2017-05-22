@@ -16,10 +16,10 @@ C = 1.0  # SVM regularization parameter
 
 for i in range(0, n):
     x1 = uniform(0, 200)
-    x2 = uniform(10, 190)
+    x2 = uniform(0, 200)
     dataset.append([x1, x2])
     # change
-    if 3*x1-4*x2+10 >= 0:
+    if x1**2+x2**2 >= 20000:
         labels.append(1.0)
         colors.append((1, 0, 0))
     else:
@@ -52,9 +52,9 @@ def F(x):
 def objective(x):
     av = 0.0
     for l in range(0, n):
-        av += labels[l] if labels[l]*(np.dot(dataset[l], x[:m])+x[m]) < 1 else 0
+        #av += labels[l] if labels[l]*(np.dot(dataset[l], x[:m])+x[m]) < 1 else 0
         #av += labels[l] * max(1-labels[l]*(np.dot(dataset[l], x[:m])+x[m]),0)  # x[m]=b
-        #av += labels[l] * (1-labels[l]*(np.dot(dataset[l], x[:m])+x[m]))
+        av += labels[l] * (1-labels[l]*(np.dot(dataset[l], x[:m])+x[m]))
     return av/n
 
 
@@ -65,18 +65,18 @@ def obj1(x):
 def constraint1(x):
     summ = 0.0
     for s in range(0, n):
-        summ += labels[s] * dataset[s][0] * (1 if labels[s]*(np.dot(dataset[s], x[:m])+x[m]) < 1 else 0)
+        #summ += labels[s] * dataset[s][0] * (1 if labels[s]*(np.dot(dataset[s], x[:m])+x[m]) < 1 else 0)
         #summ += labels[s]*dataset[s][0]*max(1-labels[s]*(np.dot(dataset[s], x[:m])+x[m]),0)
-        #summ += labels[s]*dataset[s][0]*(1-labels[s]*(np.dot(dataset[s], x[:m])+x[m]))
+        summ += labels[s]*dataset[s][0]*(1-labels[s]*(np.dot(dataset[s], x[:m])+x[m]))
     return x[0]-C*(1.0/n)*summ
 
 
 def constraint2(x):
     summ = 0.0
     for s in range(0, n):
-        summ += labels[s] * dataset[s][1] * (1 if labels[s] * (np.dot(dataset[s], x[:m]) + x[m]) < 1 else 0)
+        #summ += labels[s] * dataset[s][1] * (1 if labels[s] * (np.dot(dataset[s], x[:m]) + x[m]) < 1 else 0)
         #summ += labels[s]*dataset[s][1]*max(1-labels[s]*(np.dot(dataset[s], x[:m])+x[m]),0)
-        #summ += labels[s]*dataset[s][1]*(1-labels[s]*(np.dot(dataset[s], x[:m])+x[m]))
+        summ += labels[s]*dataset[s][1]*(1-labels[s]*(np.dot(dataset[s], x[:m])+x[m]))
     return x[1]-C*(1.0/n)*summ
 '''# optimize
 b = (-1, 1)
@@ -149,8 +149,8 @@ plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
 plt.scatter([float(i[0]) for i in dataset], [float(i[1]) for i in dataset], c=colors, cmap=plt.cm.coolwarm)
 plt.xlabel('feature1')
 plt.ylabel('feature2')
-#plt.xlim(xx.min(), xx.max())
-#plt.ylim(yy.min(), yy.max())
+plt.xlim(xx.min(), xx.max())
+plt.ylim(yy.min(), yy.max())
 plt.xticks(())
 plt.yticks(())
 plt.title('linear(soft with C=1) svm, err=' + str(err))
