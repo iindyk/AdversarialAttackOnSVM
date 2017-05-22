@@ -9,13 +9,15 @@ import matplotlib.pyplot as plt
 dataset = []
 labels = []
 colors = []
-n = 200  # training set size (must be larger than m to avoid fuck up)
+n = 400  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
 a = 20  # random attack size
-alpha = 1.35  # classifier objective weight
+alpha = 1.3  # classifier objective weight
 A = 10
 B = 110
+val_cl = []
+val_ad = []
 eps = 0.1*(B-A)  # upper bound for norm of h
 for i in range(0, n):
     point = []
@@ -44,7 +46,11 @@ for i in range(0, a):
 # x[m] - b
 # x[m+1:m+n+1] - w*h(\omega)
 def objective(x):
-    return adv_obj(x) + alpha*class_obj(x)
+    a = adv_obj(x)
+    c = class_obj(x)
+    val_cl.append(c)
+    val_ad.append(a)
+    return a + alpha*c
 
 
 def adv_obj(x):
@@ -116,6 +122,9 @@ svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
 predicted_labelsC = svc.predict(dataset_infected)
 errC = 1 - accuracy_score(labels, predicted_labelsC)
 print("c-svm error " + str(errC))
+ratio = [val_ad[i]/val_cl[i] for i in range(0, len(val_ad))]
+print("mean of ratio = " + str(np.mean(ratio)))
+print("dev of ratio = " + str(np.std(ratio)))
 
 #  plots
 if m == 2:
@@ -138,7 +147,7 @@ if m == 2:
     plt.ylim(yy.min(), yy.max())
     plt.xticks(())
     plt.yticks(())
-    plt.title('mixed svm, err=' + str(errS))
+    plt.title('mixed svm on infected dataset, err=' + str(errS))
     Z = svc.predict(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
     plt.subplot(222)
@@ -151,7 +160,7 @@ if m == 2:
     plt.ylim(yy.min(), yy.max())
     plt.xticks(())
     plt.yticks(())
-    plt.title('linear(soft with C=1) svm, err=' + str(errC))
+    plt.title('linear(soft with C=1) svm on infected dataset, err=' + str(errC))
     plt.subplot(223)
     svc1 = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
     predicted_labelsC = svc1.predict(dataset)
@@ -169,4 +178,5 @@ if m == 2:
     predicted_labelsCO = svc1.predict(dataset)
     errCO = 1 - accuracy_score(labels, predicted_labelsCO)
     plt.title('linear(soft with C=1) svm on orig dataset, err=' + str(errCO))
+    plt.suptitle('mix of classifier\'s and adversary\'s objectives test, weight of obj_cl = ' + str(alpha))
     plt.show()
