@@ -68,21 +68,23 @@ def class_obj(x):
 
 
 def constraint1(x):
-    ret = 0.0
+    ret = []
+    norm = np.dot(x[:m], x[:m])*(eps**2)
     for i in range(0, n):
-        ret -= x[m+1+i]**2
-    return ret+n*np.dot(x[:m], x[:m])*(eps**2)
+        ret.append(-x[m+1+i]**2 + norm)
+    return ret
 
 
 def constraint2(x):
-    return adv_obj(x) - errCO
+    return - adv_obj(x) - errCO
 
 
 x0 = np.array([1 for i in range(0, m+n+1)])
 con1 = {'type': 'ineq', 'fun': constraint1}
 con2 = {'type': 'ineq', 'fun': constraint2}
 cons = ([con1, con2])
-solution = minimize(objective, x0, bounds=None, method='SLSQP', constraints=cons)
+options = {'maxiter': 200}
+solution = minimize(objective, x0, bounds=None, method='SLSQP', constraints=cons, options=options)
 print(solution.success)
 print(solution.message)
 print(solution.nit)
