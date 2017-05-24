@@ -13,12 +13,12 @@ colors_h = []
 n = 200  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
-a = 2  # random attack size
+a = 10  # random attack size
 A = 10
 B = 110
 eps = 0.1*(B-A)  # upper bound for norm of h
-delta = 0.1  # iteration precision level
-maxit = 20
+delta = 1e-5  # iteration precision level
+maxit = 100  # iteration number limit
 for i in range(0, n):
     point = []
     for j in range(0, m):
@@ -40,10 +40,11 @@ for i in range(0, a):
     else:
         labels[i] = 1
         colors[i] = (1, 0, 0)
-svm = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
-x_svc = list(svm.coef_[0])
-x_svc.append(svm.intercept_[0])
-
+svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
+x_svc = list(svc.coef_[0])
+x_svc.append(svc.intercept_[0])
+predicted_labels = svc.predict(dataset)
+err_orig = 1 - accuracy_score(labels, predicted_labels)
 
 def adv_obj(x):
     av = 0.0
@@ -78,6 +79,7 @@ def class_constr(x, u, v):
     ret = []
     ret.append(v*(class_obj_orig(x_svc)+C*n*np.dot(x_svc[:m], x_svc[:m])**0.5*eps) - class_obj_inf(x))
     ret.append(class_obj_inf(x) - u*(class_obj_orig(x_svc)+C*n*np.dot(x_svc[:m], x_svc[:m])**0.5*eps))
+    return ret
 
 
 def obj_h(h):
@@ -94,13 +96,15 @@ def constr_h(h, w, g):
 nit = 0
 w_svc = np.array([0.0 for i in range(0, m)])
 w_opt = np.array([1.0 for i in range(0, m)])
+x_opt = np.array([1.0 for i in range(0, m+n+1)])
 u = 0.0
 v = 1.0
 while (w_svc[0]-w_opt[0])**2 + (w_svc[1]-w_opt[1])**2 > delta and nit < maxit:
     con1 = {'type': 'ineq', 'fun': attack_norm_constr}
     con2 = {'type': 'ineq', 'fun': class_constr, 'args': [u, v]}
     cons = [con1, con2]
-    sol = minimize(adv_obj, w_opt, bounds=None, constraints=cons)
+    sol = minimize(adv_obj, x_opt, bounds=None, constraints=cons)
+    x_opt = sol.x
     w_opt = sol.x[:m]
     b_opt = sol.x[m]
     g_opt = sol.x[m+1:]
@@ -124,13 +128,24 @@ while (w_svc[0]-w_opt[0])**2 + (w_svc[1]-w_opt[1])**2 > delta and nit < maxit:
         for j in range(0, m):
             temp.append(dataset[i][j] + h[j * n + i])
         dataset_infected.append(temp)
-    svm = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
-    w_svc = svm.coef_[0]
-    b_svc = svm.intercept_[0]
+    svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
+    w_svc = svc.coef_[0]
+    b_svc = svc.intercept_[0]
     nit += 1
 
+predicted_labels_inf = np.sign([np.dot(dataset[i], w_opt)+b_opt for i in range(0, n)])
+err_inf = 1 - accuracy_score(labels, predicted_labels_inf)
 print(nit)
 print(w_opt)
 print(b_opt)
 print(w_svc)
 print(b_svc)
+print(err_orig)
+print(err_inf)
+plt.subplot(221)
+plt.title('original')
+plt.scatter([float(i[0]) for i in dataset], [float(i[1]) for i in dataset], c=colors, cmap=plt.cm.coolwarm)
+plt.subplot(222)
+plt.title('infected')
+plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
+plt.show()
