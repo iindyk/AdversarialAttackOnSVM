@@ -8,15 +8,15 @@ import matplotlib.pyplot as plt
 dataset = []
 labels = []
 colors = []
-n = 200  # training set size (must be larger than m to avoid fuck up)
+n = 400  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
-C = 1.0  # SVM regularization parameter
-a = 20  # random attack size
+C_list = [i for i in range(1, 50)]  # SVM regularization parameter
+a = 2  # random attack size
 A = 10
 B = 110
-eps_list = []  # upper bound for norm of h
-h_list = [[0.0 for i in range(0, m)] for j in range(0, n)]  # attacks, first is zero attack
-nsim = 100  # number of simulations
+eps_list = [(i/100.0)*(B-A) for i in range(24, 25)]  # upper bound for norm of h
+h_list = []  # attacks, first is zero attack
+nsim = 50  # number of simulations
 for i in range(0, n):
     point = []
     for j in range(0, m):
@@ -54,11 +54,29 @@ for i in range(0, nsim):
     h_d_list.append([h_list[i + j * nsim] for j in range(0, n)])
 # c-svm optimization
 errs = []
-for e in eps_list:
-    for h in h_d_list:
-        infected_dataset = [[dataset[j][i]+e*h[j][i] for i in range(0, m)] for j in range(0, n)]
-        svc = svm.SVC(kernel='linear', C=C).fit(infected_dataset, labels)
-        predicted_labels = svc.predict(dataset)
-        errs.append(1 - accuracy_score(labels, predicted_labels))
+maxerrs = []
+maxerr_hs = []
+for C in C_list:
+    for e in eps_list:
+        maxerr = 0.0
+        maxerr_h = []
+        for h in h_d_list:
+            infected_dataset = [[dataset[j][i] + e * h[j][i] for i in range(0, m)] for j in range(0, n)]
+            svc = svm.SVC(kernel='linear', C=C).fit(infected_dataset, labels)
+            predicted_labels = svc.predict(dataset)
+            err = 1 - accuracy_score(labels, predicted_labels)
+            errs.append(err)
+            if err > maxerr:
+                maxerr = err
+                maxerr_h = h
+        maxerrs.append(maxerr)
+        maxerr_hs.append(maxerr_h)
 
-print(errs)
+#print(labels)
+#print(errs)
+#print(h_d_list)
+#print(infected_dataset)
+#print(dataset)
+plt.scatter(C_list, maxerrs)
+plt.show()
+
