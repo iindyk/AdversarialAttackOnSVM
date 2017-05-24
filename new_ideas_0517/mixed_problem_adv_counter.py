@@ -126,6 +126,7 @@ errS = 1 - accuracy_score(labels, predicted_labelsS)
 print("mixed svm error "+str(errS))
 
 svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
+print(svc.coef_)
 predicted_labelsC = svc.predict(dataset_infected)
 errC = 1 - accuracy_score(labels, predicted_labelsC)
 print("c-svm error " + str(errC))
