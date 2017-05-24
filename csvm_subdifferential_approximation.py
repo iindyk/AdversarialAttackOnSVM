@@ -42,10 +42,7 @@ for i in range(0, 60):
 
 
 def F(x):
-    ret = []
-    ret.append(constraint1(x))
-    ret.append(constraint2(x))
-    ret.append(objective(x))
+    ret = [constraint1(x), constraint2(x), objective(x)]
     return ret
 
 

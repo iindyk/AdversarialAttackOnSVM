@@ -8,13 +8,14 @@ import matplotlib.pyplot as plt
 dataset = []
 labels = []
 colors = []
+colors_h = []
 n = 400  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
-C_list = [i for i in range(1, 50)]  # SVM regularization parameter
+C = 1.0  # SVM regularization parameter
 a = 2  # random attack size
 A = 10
 B = 110
-eps_list = [(i/100.0)*(B-A) for i in range(24, 25)]  # upper bound for norm of h
+eps_list = [(i/100.0)*(B-A) for i in range(0, 25)]  # upper bound for norm of h
 h_list = []  # attacks, first is zero attack
 nsim = 50  # number of simulations
 for i in range(0, n):
@@ -56,27 +57,42 @@ for i in range(0, nsim):
 errs = []
 maxerrs = []
 maxerr_hs = []
-for C in C_list:
-    for e in eps_list:
-        maxerr = 0.0
-        maxerr_h = []
-        for h in h_d_list:
-            infected_dataset = [[dataset[j][i] + e * h[j][i] for i in range(0, m)] for j in range(0, n)]
-            svc = svm.SVC(kernel='linear', C=C).fit(infected_dataset, labels)
-            predicted_labels = svc.predict(dataset)
-            err = 1 - accuracy_score(labels, predicted_labels)
-            errs.append(err)
-            if err > maxerr:
-                maxerr = err
-                maxerr_h = h
-        maxerrs.append(maxerr)
-        maxerr_hs.append(maxerr_h)
+for e in eps_list:
+    maxerr = 0.0
+    maxerr_h = []
+    for h in h_d_list:
+        infected_dataset = [[dataset[j][i] + e * h[j][i] for i in range(0, m)] for j in range(0, n)]
+        svc = svm.SVC(kernel='linear', C=C).fit(infected_dataset, labels)
+        predicted_labels = svc.predict(dataset)
+        err = 1 - accuracy_score(labels, predicted_labels)
+        errs.append(err)
+        if err > maxerr:
+            maxerr = err
+            maxerr_h = h
+    maxerrs.append(maxerr)
+    maxerr_hs.append(maxerr_h)
+    colors_h.append((0, 1, 0))
 
-#print(labels)
-#print(errs)
-#print(h_d_list)
-#print(infected_dataset)
-#print(dataset)
-plt.scatter(C_list, maxerrs)
+
+# subdifferential adversarial attack
+def class_constr(x, e):
+    res = []
+    for i in range(0, m):
+        summ = 0.0
+        for j in range(0, n):
+            # summ += labels[j] * dataset[j][i] * (1 if labels[j]*(np.dot(dataset[j], x[:m])+x[m]) < 1 else 0)
+            # summ += labels[j]*dataset[j][i]*max(1-labels[j]*(np.dot(dataset[j], x[:m])+x[m]),0)
+            summ += labels[j] * dataset[j][i] * (1 - labels[j] * (np.dot(dataset[j], x[:m]) + x[m]))
+        res.append(x[i] - C*(1.0/n)*summ)
+    av = 0.0
+    for l in range(0, n):
+        # av += labels[l] if labels[l]*(np.dot(dataset[l], x[:m])+x[m]) < 1 else 0
+        # av += labels[l] * max(1-labels[l]*(np.dot(dataset[l], x[:m])+x[m]),0)  # x[m]=b
+        av += labels[l] * (1 - labels[l] * (np.dot(dataset[l], x[:m]) + x[m]))
+    res.append(av/n)
+    return res
+
+
+plt.scatter(eps_list, maxerrs, c=colors_h)
 plt.show()
 
