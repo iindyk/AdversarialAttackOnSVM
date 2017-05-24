@@ -10,13 +10,13 @@ dataset = []
 labels = []
 colors = []
 colors_h = []
-n = 400  # training set size (must be larger than m to avoid fuck up)
+n = 200  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
 a = 2  # random attack size
 A = 10
 B = 110
-eps_list = [(i/100.0)*(B-A) for i in range(20, 25)]  # upper bound for norm of h
+eps_list = [(i/100.0)*(B-A) for i in range(10, 40)]  # upper bound for norm of h
 h_list = []  # attacks, first is zero attack
 nsim = 50  # number of simulations
 for i in range(0, n):
@@ -114,7 +114,7 @@ options = {'maxiter': 100}
 for e in eps_list:
     con2 = {'type': 'ineq', 'fun': attack_norm_constr, 'args': [e]}
     cons = ([con1, con2])
-    sol = minimize(adv_objective, x0, bounds=None, constraints=cons, options=options)
+    sol = minimize(adv_objective, x0, bounds=None, method='SLSQP', constraints=cons, options=options)
     print(sol.nit)
     if not sol.success:
         print(sol.message)
@@ -125,7 +125,7 @@ for e in eps_list:
     maxerrs.append(err)
     colors_h.append((1, 0, 0))
     print('min done e='+str(e))
-
-plt.scatter(eps_list, maxerrs, c=colors_h)
+elist = eps_list+eps_list
+plt.scatter(elist, maxerrs, c=colors_h)
 plt.show()
 
