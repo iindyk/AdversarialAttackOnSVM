@@ -10,7 +10,7 @@ dataset = []
 labels = []
 colors = []
 colors_h = []
-n = 100  # training set size (must be larger than m to avoid fuck up)
+n = 50  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
 a = 0  # random attack size
@@ -18,7 +18,7 @@ A = 0
 B = 100
 eps = 0.1*(B-A)  # upper bound for norm of h
 delta = 1e-4  # iteration precision level
-maxit = 100  # iteration number limit
+maxit = 50  # iteration number limit
 for i in range(0, n):
     point = []
     for j in range(0, m):
@@ -50,7 +50,7 @@ err_orig = 1 - accuracy_score(labels, predicted_labels)
 def adv_obj(x):
     av = 0.0
     for i in range(0, n):
-        av += max(1+labels[i]*(np.dot(dataset[i], x[:m])+x[m]), 0)
+        av += max(labels[i]*(np.dot(dataset[i], x[:m])+x[m]), -1.0)
     return av/n
 
 
@@ -76,21 +76,21 @@ def attack_norm_constr(x):
     return ret
 
 
-def class_constr(x, u, v):
+def class_constr(x, p, q):
     ret = []
-    ret.append(v*(class_obj_orig(x_svc)+C*n*np.dot(x_svc[:m], x_svc[:m])**0.5*eps) - class_obj_inf(x))
-    ret.append(class_obj_inf(x) - u*(class_obj_orig(x_svc)+C*n*np.dot(x_svc[:m], x_svc[:m])**0.5*eps))
+    ret.append(q*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps) - class_obj_inf(x))
+    ret.append(class_obj_inf(x) - p*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps))
     return ret
 
 
-def obj_h(h):
-    return np.dot(h, h)
+def obj_h(x):
+    return np.dot(x, x)
 
 
-def constr_h(h, w, g):
+def constr_h(x, w, g):
     ret = []
     for i in range(0, n):
-        ret.append(h[i]*w[0]+h[n+i]*w[1]-g[i])
+        ret.append(x[i]*w[0]+x[n+i]*w[1]-g[i])
     return ret
 
 # iterative scheme
