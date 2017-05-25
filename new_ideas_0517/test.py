@@ -14,18 +14,18 @@ n = 100  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
 a = 0  # random attack size
-A = 0
-B = 100
+A = 10
+B = 110
 eps = 0.1*(B-A)  # upper bound for norm of h
-delta = 1e-4  # iteration precision level
-maxit = 100  # iteration number limit
+delta = 1e-5  # iteration precision level
+maxit = 100
 for i in range(0, n):
     point = []
     for j in range(0, m):
         point.append(uniform(A, B))
     dataset.append(point)
     # change
-    if sum([p for p in point]) >= 100:
+    if sum([p**2 for p in point]) >= 75**2:
         labels.append(1.0)
         colors.append((1, 0, 0))
     else:
@@ -43,8 +43,6 @@ for i in range(0, a):
 svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
 x_svc = list(svc.coef_[0])
 x_svc.append(svc.intercept_[0])
-predicted_labels = svc.predict(dataset)
-err_orig = 1 - accuracy_score(labels, predicted_labels)
 
 
 def adv_obj(x):
@@ -96,29 +94,24 @@ def constr_h(h, w, g):
 # iterative scheme
 nit = 0
 w_svc = np.array([0.0 for i in range(0, m)])
-w_opt = np.array([1.0 for i in range(0, m)])
 x_opt0 = np.array([1.0 for i in range(0, m+n+1)])
+w_opt = np.array([1.0 for i in range(0, m)])
 u = 0.0
 v = 1.0
-options = {'maxiter': 100}
 while (w_svc[0]-w_opt[0])**2 + (w_svc[1]-w_opt[1])**2 > delta and nit < maxit:
-    print('iteration '+str(nit))
     con1 = {'type': 'ineq', 'fun': attack_norm_constr}
     con2 = {'type': 'ineq', 'fun': class_constr, 'args': [u, v]}
     cons = [con1, con2]
-    sol = minimize(adv_obj, x_opt0, bounds=None, options=options, constraints=cons)
-    x_opt = list(sol.x)
+    sol = minimize(adv_obj, x_opt0, bounds=None, constraints=cons)
+    x_opt = sol.x
     w_opt = sol.x[:m]
     b_opt = sol.x[m]
     g_opt = sol.x[m+1:]
-    print(sol.message)
     if not sol.success:
-        print('u = '+str(u)+' v = '+str(v)+' no sol')
         tmp = u
         u = v
         v = 2*v - tmp
     else:
-        print('u = ' + str(u) + ' v = ' + str(v) + ' exist sol')
         v = (u+v)/2
     sol.clear()
     # restoring h
@@ -126,7 +119,7 @@ while (w_svc[0]-w_opt[0])**2 + (w_svc[1]-w_opt[1])**2 > delta and nit < maxit:
     con_h = {'type': 'eq', 'fun': constr_h, 'args': [w_opt, g_opt]}
     cons_h = ([con_h])
     sol_h = minimize(obj_h, h0, bounds=None, constraints=cons_h)
-    h = list(sol_h.x)
+    h = sol_h.x
     sol_h.clear()
     dataset_infected = []
     for i in range(0, n):
@@ -139,15 +132,11 @@ while (w_svc[0]-w_opt[0])**2 + (w_svc[1]-w_opt[1])**2 > delta and nit < maxit:
     b_svc = svc.intercept_[0]
     nit += 1
 
-predicted_labels_inf = np.sign([np.dot(dataset[i], w_opt)+b_opt for i in range(0, n)])
-err_inf = 1 - accuracy_score(labels, predicted_labels_inf)
 print(nit)
 print(w_opt)
 print(b_opt)
 print(w_svc)
 print(b_svc)
-print(err_orig)
-print(err_inf)
 plt.subplot(221)
 plt.title('original')
 plt.scatter([float(i[0]) for i in dataset], [float(i[1]) for i in dataset], c=colors, cmap=plt.cm.coolwarm)
