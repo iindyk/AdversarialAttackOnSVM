@@ -78,8 +78,8 @@ def attack_norm_constr(x):
 
 def class_constr(x, p, q):
     ret = []
-    ret.append(q*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps) - class_obj_inf(x))
-    ret.append(class_obj_inf(x) - p*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps))
+    ret.append((q*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps) - class_obj_inf(x))*1e5)
+    ret.append((class_obj_inf(x) - p*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps))*1e5)
     return ret
 
 
@@ -97,7 +97,7 @@ def constr_h(x, w, g):
 nit = 0
 w_svc = np.array([0.0 for i in range(0, m)])
 w_opt = np.array([1.0 for i in range(0, m)])
-x_opt0 = np.array([1.0 for i in range(0, m+n+1)])
+x_opt = np.array([1.0 for i in range(0, m+n+1)])
 u = 0.0
 v = 1.0
 options = {'maxiter': 100}
@@ -106,12 +106,13 @@ while (w_svc[0]-w_opt[0])**2 + (w_svc[1]-w_opt[1])**2 > delta and nit < maxit:
     con1 = {'type': 'ineq', 'fun': attack_norm_constr}
     con2 = {'type': 'ineq', 'fun': class_constr, 'args': [u, v]}
     cons = [con1, con2]
-    sol = minimize(adv_obj, x_opt0, bounds=None, options=options, constraints=cons)
+    sol = minimize(adv_obj, x_opt, bounds=None, options=options, constraints=cons)
     x_opt = list(sol.x)
     w_opt = sol.x[:m]
     b_opt = sol.x[m]
     g_opt = sol.x[m+1:]
     print(sol.message)
+    print('maxcv is ' + str(min(attack_norm_constr(x_opt)))+'  and  '+str(min(class_constr(x_opt, u, v))))
     if not sol.success:
         print('u = '+str(u)+' v = '+str(v)+' no sol')
         tmp = u
@@ -122,7 +123,7 @@ while (w_svc[0]-w_opt[0])**2 + (w_svc[1]-w_opt[1])**2 > delta and nit < maxit:
         v = (u+v)/2
     sol.clear()
     # restoring h
-    h0 = np.array([0.1 for i in range(0, 2 * n)])
+    h0 = np.array([1 for i in range(0, 2 * n)])
     con_h = {'type': 'eq', 'fun': constr_h, 'args': [w_opt, g_opt]}
     cons_h = ([con_h])
     sol_h = minimize(obj_h, h0, bounds=None, constraints=cons_h)
