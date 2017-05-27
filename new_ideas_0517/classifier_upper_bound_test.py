@@ -72,7 +72,7 @@ def attack_norm_constr(x):
     ret = 0.0
     for i in range(0, n):
         ret += abs(x[m+1+i])
-    return -(ret/n)**2+np.dot(x[:m], x[:m])*(eps**2)
+    return -(ret/n)**2+np.dot(x_svc[:m], x_svc[:m])*(eps**2)
 
 
 def class_constr(x, p, q):
