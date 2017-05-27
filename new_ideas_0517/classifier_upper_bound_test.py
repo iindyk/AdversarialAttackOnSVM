@@ -12,20 +12,20 @@ colors = []
 colors_h = []
 n = 50  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
-C = 1.0  # SVM regularization parameter
-a = 0  # random attack size
+C = 1.0/n  # SVM regularization parameter
+a = 20  # random attack size
 A = 0
 B = 100
 eps = 0.1*(B-A)  # upper bound for norm of h
-delta = 1e-4  # iteration precision level
-maxit = 50  # iteration number limit
+delta = 1e-3  # iteration precision level
+maxit = 30  # iteration number limit
 for i in range(0, n):
     point = []
     for j in range(0, m):
         point.append(uniform(A, B))
     dataset.append(point)
     # change
-    if sum([p for p in point]) >= 100:
+    if sum([p**2 for p in point]) >= 5000:
         labels.append(1.0)
         colors.append((1, 0, 0))
     else:
@@ -69,17 +69,16 @@ def class_obj_orig(x):
 
 
 def attack_norm_constr(x):
-    ret = []
-    norm = np.dot(x[:m], x[:m])*(eps**2)
+    ret = 0.0
     for i in range(0, n):
-        ret.append(-x[m+1+i]**2 + norm)
-    return ret
+        ret += abs(x[m+1+i])
+    return -(ret/n)**2+np.dot(x[:m], x[:m])*(eps**2)
 
 
 def class_constr(x, p, q):
     ret = []
-    ret.append((q*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps) - class_obj_inf(x))*1e5)
-    ret.append((class_obj_inf(x) - p*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps))*1e5)
+    ret.append((q*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps) - class_obj_inf(x)))
+    ret.append((class_obj_inf(x) - p*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps)))
     return ret
 
 
@@ -96,28 +95,31 @@ def constr_h(x, w, g):
 # iterative scheme
 nit = 0
 w_svc = np.array([0.0 for i in range(0, m)])
+b_svc = 0
 w_opt = np.array([1.0 for i in range(0, m)])
+b_opt = 1
 x_opt = np.array([1.0 for i in range(0, m+n+1)])
 u = 0.0
 v = 1.0
-options = {'maxiter': 100}
-while (w_svc[0]-w_opt[0])**2 + (w_svc[1]-w_opt[1])**2 > delta and nit < maxit:
+options = {'maxiter': 200}
+while (w_svc[0]-w_opt[0])**2 + (w_svc[1]-w_opt[1])**2+(b_svc - b_opt)**2 > delta and nit < maxit and v-u > delta**4:
     print('iteration '+str(nit))
     con1 = {'type': 'ineq', 'fun': attack_norm_constr}
     con2 = {'type': 'ineq', 'fun': class_constr, 'args': [u, v]}
     cons = [con1, con2]
-    sol = minimize(adv_obj, x_opt, bounds=None, options=options, constraints=cons)
+    sol = minimize(adv_obj, x_opt, method='SLSQP', bounds=None, options=options, constraints=cons)
     x_opt = list(sol.x)
     w_opt = sol.x[:m]
     b_opt = sol.x[m]
     g_opt = sol.x[m+1:]
     print(sol.message)
-    print('maxcv is ' + str(min(attack_norm_constr(x_opt)))+'  and  '+str(min(class_constr(x_opt, u, v))))
-    if not sol.success:
+    print(sol.nit)
+    print('maxcv is ' + str(attack_norm_constr(x_opt))+'  and  '+str(min(class_constr(x_opt, u, v))))
+    if not sol.success :
         print('u = '+str(u)+' v = '+str(v)+' no sol')
         tmp = u
         u = v
-        v = 2*v - tmp
+        v = min(2*v - tmp, 1.0)
     else:
         print('u = ' + str(u) + ' v = ' + str(v) + ' exist sol')
         v = (u+v)/2
@@ -148,7 +150,49 @@ print(b_opt)
 print(w_svc)
 print(b_svc)
 print(err_orig)
-print(err_inf)
+print('err on w from opt '+str(err_inf))
+pr_lb = svc.predict(dataset)
+err_infc = 1 - accuracy_score(labels, pr_lb)
+print('err of csvm on infected' + str(err_infc))
+####################
+nsim = 100
+eps_list = [eps]
+h_list = []
+# generating random attacks
+temp = np.random.normal(0.0, 1.0, nsim*n*2)
+for i in range(0, n*nsim):
+    t = np.array([])
+    nrm = 0.0
+    for j in range(0, m):
+        t = np.append(t, temp[i + j * nsim * n])
+        nrm += temp[i + j * nsim * n]**2
+    h_list.append([t[k]/nrm**0.5 for k in range(0, m)])
+# separation on nsim lists
+h_d_list = []
+for i in range(0, nsim):
+    h_d_list.append([h_list[i + j * nsim] for j in range(0, n)])
+# c-svm optimization
+errs = []
+maxerrs = []
+maxerr_hs = []
+for e in eps_list:
+    maxerr = 0.0
+    maxerr_h = []
+    for h in h_d_list:
+        infected_dataset = [[dataset[j][i] + e * h[j][i] for i in range(0, m)] for j in range(0, n)]
+        svc = svm.SVC(kernel='linear', C=C).fit(infected_dataset, labels)
+        predicted_labels = svc.predict(dataset)
+        err = 1 - accuracy_score(labels, predicted_labels)
+        errs.append(err)
+        if err > maxerr:
+            maxerr = err
+            maxerr_h = h
+    maxerrs.append(maxerr)
+    maxerr_hs.append(maxerr_h)
+    colors_h.append((0, 1, 0))
+print('svc is done')
+print('mc maxerr '+str(maxerrs))
+####################
 plt.subplot(221)
 plt.title('original')
 plt.scatter([float(i[0]) for i in dataset], [float(i[1]) for i in dataset], c=colors, cmap=plt.cm.coolwarm)
