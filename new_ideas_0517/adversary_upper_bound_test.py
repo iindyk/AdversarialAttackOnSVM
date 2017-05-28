@@ -75,10 +75,10 @@ def attack_norm_constr(x, w):
     return -(ret/n)+np.dot(w, w)*(eps**2)
 
 
-def class_constr(x, p, q):
+def adv_constr(x, p, q):
     ret = []
-    ret.append((q*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps) - class_obj_inf(x)))
-    ret.append((class_obj_inf(x) - p*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps)))
+    ret.append(1000*q - adv_obj(x))
+    ret.append(adv_obj(x) - 1000*p)
     return ret
 
 
@@ -103,19 +103,19 @@ x_opt = np.array([1.0 for i in range(0, m+n+1)])
 u = 0.0
 v = 1.0
 options = {'maxiter': 100}
-while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit and v-u > 1e-3:
+while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit:
     print('iteration '+str(nit))
     con1 = {'type': 'ineq', 'fun': attack_norm_constr, 'args': [w_opt]}
-    con2 = {'type': 'ineq', 'fun': class_constr, 'args': [u, v]}
+    con2 = {'type': 'ineq', 'fun': adv_constr, 'args': [u, v]}
     cons = [con1, con2]
-    sol = minimize(adv_obj, x_opt, method='SLSQP', bounds=None, options=options, constraints=cons)
+    sol = minimize(class_obj_inf, x_opt, method='SLSQP', bounds=None, options=options, constraints=cons)
     x_opt = list(sol.x)
     w_opt = sol.x[:m]
     b_opt = sol.x[m]
     g_opt = sol.x[m+1:]
     print(sol.message)
     print(sol.nit)
-    print('maxcv is ' + str(attack_norm_constr(x_opt, w_opt))+'  and  '+str(min(class_constr(x_opt, u, v))))
+    print('maxcv is ' + str(attack_norm_constr(x_opt, w_opt))+'  and  '+str(min(adv_constr(x_opt, u, v))))
     if not sol.success:
         print('u = '+str(u)+' v = '+str(v)+' no sol')
         tmp = u
