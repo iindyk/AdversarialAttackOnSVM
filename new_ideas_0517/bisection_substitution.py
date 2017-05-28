@@ -87,6 +87,7 @@ def w_constr(x):
     ret = []
     for i in range(0, n):
         ret.append(np.dot(dataset[i], x[:m])-x[m+n+1+i]+x[m+1+i])
+    return ret
 
 
 def obj_h(x):
@@ -106,7 +107,7 @@ w_svc[0] = 0.0
 b_svc = 0
 w_opt = np.array([1.0 for i in range(0, m)])
 b_opt = 1
-x_opt = np.array([1.0 for i in range(0, m+n+1)])
+x_opt = np.array([1.0 for i in range(0, m+2*n+1)])
 u = 0.0
 v = 1.0
 options = {'maxiter': 100}
