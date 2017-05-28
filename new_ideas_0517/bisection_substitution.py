@@ -10,7 +10,7 @@ dataset = []
 labels = []
 colors = []
 colors_h = []
-n = 100  # training set size (must be larger than m to avoid fuck up)
+n = 50  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
 a = 50  # random attack size
@@ -18,7 +18,8 @@ A = 0
 B = 100
 eps = 0.1*(B-A)  # upper bound for norm of h
 delta = 1e-7  # iteration precision level
-maxit = 100  # iteration number limit
+maxit = 50  # iteration number limit
+'''x[:m] = w, x[m] = b, x[m+1:n+m+1] = g1, x[n+m+1:] = g'''
 for i in range(0, n):
     point = []
     for j in range(0, m):
@@ -50,21 +51,21 @@ err_orig = 1 - accuracy_score(labels, predicted_labels)
 def adv_obj(x):
     av = 0.0
     for i in range(0, n):
-        av += max(labels[i]*(np.dot(dataset[i], x[:m])+x[m]), -1.0)
+        av += max(labels[i]*(x[m+n+1+i]-x[m+1+i]+x[m]), -1.0)
     return av/n
 
 
 def class_obj_inf(x):
     av = 0.0
     for i in range(0, n):
-        av += max(1-labels[i]*(np.dot(dataset[i], x[:m])+x[m]+x[m+1+i]), 0)
+        av += max(1-labels[i]*(x[m+n+1+i]+x[m]), 0)
     return np.dot(x[:m], x[:m])/2.0 + C*av
 
 
 def class_obj_orig(x):
     av = 0.0
     for i in range(0, n):
-        av += max(1-labels[i]*(np.dot(dataset[i], x[:m])+x[m]), 0)
+        av += max(1-labels[i]*(x[m+n+1+i]+x[m]), 0)
     return np.dot(x[:m], x[:m])/2.0 + C*av
 
 
@@ -80,6 +81,12 @@ def adv_constr(x, p, q):
     ret.append(1000*q - adv_obj(x))
     ret.append(adv_obj(x) - 1000*p)
     return ret
+
+
+def w_constr(x):
+    ret = []
+    for i in range(0, n):
+        ret.append(np.dot(dataset[i], x[:m])-x[m+n+1+i]+x[m+1+i])
 
 
 def obj_h(x):
@@ -103,11 +110,12 @@ x_opt = np.array([1.0 for i in range(0, m+n+1)])
 u = 0.0
 v = 1.0
 options = {'maxiter': 100}
+con3 = {'type': 'eq', 'fun': w_constr}
 while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit:
     print('iteration '+str(nit))
     con1 = {'type': 'ineq', 'fun': attack_norm_constr, 'args': [w_opt]}
     con2 = {'type': 'ineq', 'fun': adv_constr, 'args': [u, v]}
-    cons = [con1, con2]
+    cons = [con1, con2, con3]
     sol = minimize(class_obj_inf, x_opt, method='SLSQP', bounds=None, options=options, constraints=cons)
     x_opt = list(sol.x)
     w_opt = sol.x[:m]
