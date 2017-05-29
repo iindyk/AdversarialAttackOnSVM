@@ -13,7 +13,7 @@ colors_h = []
 n = 50  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
-a = 50  # random attack size
+a = 10  # random attack size
 A = 0
 B = 100
 eps = 0.1*(B-A)  # upper bound for norm of h
@@ -83,6 +83,13 @@ def adv_constr(x, p, q):
     return ret
 
 
+def class_constr(x, p, q):
+    ret = []
+    ret.append(q*1000 - class_obj_inf(x))
+    ret.append(class_obj_inf(x) - p*1000)
+    return ret
+
+
 def w_constr(x):
     ret = []
     for i in range(0, n):
@@ -110,14 +117,14 @@ b_opt = 1
 x_opt = np.array([1.0 for i in range(0, m+2*n+1)])
 u = 0.0
 v = 1.0
-options = {'maxiter': 100}
+options = {'maxiter': 200}
 con3 = {'type': 'eq', 'fun': w_constr}
 while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit:
     print('iteration '+str(nit))
     con1 = {'type': 'ineq', 'fun': attack_norm_constr, 'args': [w_opt]}
-    con2 = {'type': 'ineq', 'fun': adv_constr, 'args': [u, v]}
+    con2 = {'type': 'ineq', 'fun': class_constr, 'args': [u, v]}
     cons = [con1, con2, con3]
-    sol = minimize(class_obj_inf, x_opt, method='SLSQP', bounds=None, options=options, constraints=cons)
+    sol = minimize(adv_obj, x_opt, method='SLSQP', bounds=None, options=options, constraints=cons)
     x_opt = list(sol.x)
     w_opt = sol.x[:m]
     b_opt = sol.x[m]
@@ -150,6 +157,8 @@ while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit:
     svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
     w_svc = svc.coef_[0]
     b_svc = svc.intercept_[0]
+    print('w_opt = '+str(w_opt))
+    print('w_svc = '+str(w_svc))
     nit += 1
 
 predicted_labels_inf = np.sign([np.dot(dataset[i], w_opt)+b_opt for i in range(0, n)])
