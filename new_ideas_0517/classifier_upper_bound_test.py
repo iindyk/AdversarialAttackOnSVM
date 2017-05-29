@@ -58,14 +58,14 @@ def class_obj_inf(x):
     av = 0.0
     for i in range(0, n):
         av += max(1-labels[i]*(np.dot(dataset[i], x[:m])+x[m]+x[m+1+i]), 0)
-    return np.dot(x[:m], x[:m])/2.0 + C*av
+    return 0*np.dot(x[:m], x[:m])/2.0 + C*av
 
 
 def class_obj_orig(x):
     av = 0.0
     for i in range(0, n):
         av += max(1-labels[i]*(np.dot(dataset[i], x[:m])+x[m]), 0)
-    return np.dot(x[:m], x[:m])/2.0 + C*av
+    return 0*np.dot(x[:m], x[:m])/2.0 + C*av
 
 
 def attack_norm_constr(x, w):
@@ -77,8 +77,8 @@ def attack_norm_constr(x, w):
 
 def class_constr(x, p, q):
     ret = []
-    ret.append((q*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps) - class_obj_inf(x)))
-    ret.append((class_obj_inf(x) - p*(class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps)))
+    ret.append((q - class_obj_inf(x)))
+    ret.append((class_obj_inf(x) - p))
     return ret
 
 
@@ -100,10 +100,10 @@ b_svc = 0
 w_opt = np.array([1.0 for i in range(0, m)])
 b_opt = 1
 x_opt = np.array([1.0 for i in range(0, m+n+1)])
-u = 0.0
-v = 1.0
+u = class_obj_orig(x_svc)
+v = class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps
 options = {'maxiter': 100}
-while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit and v-u > 1e-3:
+while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit and v-u > 1e-10:
     print('iteration '+str(nit))
     con1 = {'type': 'ineq', 'fun': attack_norm_constr, 'args': [w_opt]}
     con2 = {'type': 'ineq', 'fun': class_constr, 'args': [u, v]}
@@ -141,6 +141,8 @@ while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit and v-u
     svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
     w_svc = svc.coef_[0]
     b_svc = svc.intercept_[0]
+    print('w_opt = '+str(w_opt))
+    print('w_svc = '+str(w_svc))
     nit += 1
 
 predicted_labels_inf = np.sign([np.dot(dataset[i], w_opt)+b_opt for i in range(0, n)])
@@ -153,7 +155,7 @@ print(err_orig)
 print('err on w from opt '+str(err_inf))
 pr_lb = svc.predict(dataset)
 err_infc = 1 - accuracy_score(labels, pr_lb)
-print('err of csvm on infected' + str(err_infc))
+print('err of csvm on infected ' + str(err_infc))
 ####################
 nsim = 100
 eps_list = [eps]

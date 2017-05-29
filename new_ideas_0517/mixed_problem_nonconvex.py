@@ -99,7 +99,7 @@ con1 = {'type': 'ineq', 'fun': constraint1}
 con2 = {'type': 'ineq', 'fun': constraint2}
 con3 = {'type': 'eq', 'fun': class_constr}
 cons = ([con1, con2])
-options = {'maxiter': 200}
+options = {'maxiter': 400}
 solution = minimize(objective, x0, bounds=None, method='SLSQP', constraints=cons, options=options)
 print(solution.success)
 print(solution.message)
