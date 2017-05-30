@@ -10,7 +10,7 @@ dataset = []
 labels = []
 colors = []
 colors_h = []
-n = 100  # training set size (must be larger than m to avoid fuck up)
+n = 50  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
 a = 10  # random attack size
@@ -100,7 +100,7 @@ b_svc = 0
 w_opt = np.array([1.0 for i in range(0, m)])
 b_opt = 1
 x_opt = np.array([1.0 for i in range(0, m+n+1)])
-u = class_obj_orig(x_svc)
+u = 0.0
 v = class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps
 options = {'maxiter': 100}
 while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit and v-u > 1e-10:
@@ -116,11 +116,12 @@ while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit and v-u
     print(sol.message)
     print(sol.nit)
     print('maxcv is ' + str(attack_norm_constr(x_opt, w_opt))+'  and  '+str(min(class_constr(x_opt, u, v))))
+    print('obj = '+str(sol.fun))
     if not sol.success:
         print('u = '+str(u)+' v = '+str(v)+' no sol')
         tmp = u
         u = v
-        v = min(2*v - tmp, 1.0)
+        v = 2*v - tmp
     else:
         print('u = ' + str(u) + ' v = ' + str(v) + ' exist sol')
         v = (u+v)/2

@@ -13,7 +13,7 @@ colors_h = []
 n = 100  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
-a = 50  # random attack size
+a = 0  # random attack size
 A = 0
 B = 100
 eps = 0.1*(B-A)  # upper bound for norm of h
@@ -77,8 +77,8 @@ def attack_norm_constr(x, w):
 
 def adv_constr(x, p, q):
     ret = []
-    ret.append(1000*q - adv_obj(x))
-    ret.append(adv_obj(x) - 1000*p)
+    ret.append(q - adv_obj(x))
+    ret.append(adv_obj(x) - p)
     return ret
 
 
@@ -100,8 +100,8 @@ b_svc = 0
 w_opt = np.array([1.0 for i in range(0, m)])
 b_opt = 1
 x_opt = np.array([1.0 for i in range(0, m+n+1)])
-u = 0.0
-v = 1.0
+u = err_orig
+v = 10.0
 options = {'maxiter': 100}
 while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit:
     print('iteration '+str(nit))
@@ -120,7 +120,7 @@ while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit:
         print('u = '+str(u)+' v = '+str(v)+' no sol')
         tmp = u
         u = v
-        v = min(2*v - tmp, 1.0)
+        v = 2*v - tmp
     else:
         print('u = ' + str(u) + ' v = ' + str(v) + ' exist sol')
         v = (u+v)/2

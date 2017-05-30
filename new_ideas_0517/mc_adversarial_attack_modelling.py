@@ -75,6 +75,7 @@ for e in eps_list:
     colors_h.append((0, 1, 0))
 print('svc is done')
 
+
 # subdifferential adversarial attack
 def class_constr(x):
     res = []
