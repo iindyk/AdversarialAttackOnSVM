@@ -9,10 +9,12 @@ import matplotlib.pyplot as plt
 dataset = []
 labels = []
 colors = []
-n = 600  # training set size
-m = 15  # features
+n = 200  # training set size
+m = 2  # features
 a = 40  # attack size
-eps = 10
+eps_list = [5*i for i in range(0, 9)]
+C = 1.0  # SVM regularization parameter
+nsim = 100
 # x[:m] = w
 # x[m] = b
 # x[m+1:n+m+1] = h[:][0]
@@ -26,8 +28,10 @@ for i in range(0, n):
     # change
     if sum([p**2 for p in point]) >= 50**2 * m:
         labels.append(1.0)
+        colors.append((1, 0, 0))
     else:
         labels.append(-1.0)
+        colors.append((0, 0, 1))
 
 # random attack
 for i in range(0, a):
@@ -97,7 +101,7 @@ def adv_obj(x):
     return av/n
 
 
-def attack_norm_constr(x):
+def attack_norm_constr(x, eps):
     ret = 0.0
     for i in range(0, n):
             for j in range(0, m):
@@ -107,28 +111,66 @@ def attack_norm_constr(x):
 
 con1 = {'type': 'eq', 'fun': chebyshev_subdiff_inf}
 con2 = {'type': 'ineq', 'fun': wsign_constr}
-con3 = {'type': 'ineq', 'fun': attack_norm_constr}
-cons = [con1, con2, con3]
 x0 = np.array([1.0 for i in range(0, m+1+n*m)])
-sol = minimize(adv_obj, x0, constraints=cons)
-print(sol.success)
-print(sol.message)
-w = sol.x[:m]
-b = sol.x[m]
-h = sol.x[m+1:]
-dataset_infected = []
-for i in range(0, n):
-    temp = []
-    for j in range(0, m):
-        temp.append(dataset[i][j] + h[j * n + i])
-    dataset_infected.append(temp)
-predicted_labelsS_inf = np.sign([np.dot(dataset_infected[i], w)+b for i in range(0, n)])
-accS_inf = accuracy_score(labels, predicted_labelsS_inf)
-errS_inf = 1 - accS_inf
-print("Chebyshev's svm error "+str(errS_inf))
-C = 1.0  # SVM regularization parameter
-svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
-predicted_labelsC_inf = svc.predict(dataset_infected)
-accC_inf = accuracy_score(labels, predicted_labelsC_inf)
-errC_inf = 1 - accC_inf
-print("c-svm error "+str(errC_inf))
+errs = []
+colors_h = []
+h20 = []
+ds_inf20 = []
+for eps in eps_list:
+    con3 = {'type': 'ineq', 'fun': attack_norm_constr, 'args': [eps]}
+    cons = [con1, con2, con3]
+    sol = minimize(adv_obj, x0, constraints=cons)
+    print(sol.success)
+    print(sol.message)
+    w = sol.x[:m]
+    b = sol.x[m]
+    h = sol.x[m+1:]
+    dataset_infected = []
+    for i in range(0, n):
+        temp = []
+        for j in range(0, m):
+            temp.append(dataset[i][j] + h[j * n + i])
+        dataset_infected.append(temp)
+    if eps == 20:
+        h20 = list(h)
+        ds_inf20 = list(dataset_infected)
+    #predicted_labelsS_inf = np.sign([np.dot(dataset_infected[i], w)+b for i in range(0, n)])
+    #accS_inf = accuracy_score(labels, predicted_labelsS_inf)
+    #errS_inf = 1 - accS_inf
+    #print("Chebyshev's svm error "+str(errS_inf))
+    svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
+    errs.append(1 - accuracy_score(labels, svc.predict(dataset_infected)))
+    colors_h.append((1, 0, 0))
+
+plt.subplot(221)
+plt.title('original dataset')
+plt.scatter([float(i[0]) for i in dataset], [float(i[1]) for i in dataset], c=colors, cmap=plt.cm.coolwarm)
+plt.subplot(222)
+plt.title('infected dataset (chebyshev), eps = 20')
+plt.scatter([float(i[0]) for i in ds_inf20], [float(i[1]) for i in ds_inf20], c=colors, cmap=plt.cm.coolwarm)
+h_list = []
+h = []
+for eps in eps_list:
+    h_list = []
+    maxerr = 0.0
+    for k in range(0, nsim):
+        h = []
+        dataset_infected = []
+        for i in range(0, n):
+            fi = uniform(0, 2*np.pi)
+            h.append([eps*np.cos(fi), eps*np.sin(fi)])
+            dataset_infected.append([dataset[i][0]+eps*np.cos(fi), dataset[i][1] + eps*np.sin(fi)])
+        h_list.append(list(h))
+        svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
+        if maxerr < 1 - accuracy_score(labels, svc.predict(dataset_infected)):
+            maxerr = 1 - accuracy_score(labels, svc.predict(dataset_infected))
+            h_maxerr = list(h)
+    errs.append(maxerr)
+    colors_h.append((0, 1, 0))
+
+plt.subplot(223)
+plt.title('optimization attacks vs best random(out of 100 sim.)')
+plt_opt = plt.scatter(errs[:9], eps_list, c=colors_h[:9])
+plt_sim = plt.scatter(errs[9:], eps_list, c=colors_h[9:])
+plt.legend([plt_opt, plt_sim], ['optimization', 'simulation'])
+
