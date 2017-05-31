@@ -15,7 +15,7 @@ C = 1.0/n  # SVM regularization parameter
 a = 10  # random attack size
 A = 0
 B = 100
-eps = 0.1*(B-A)  # upper bound for norm of h
+eps = 0.01*(B-A)  # upper bound for norm of h
 for i in range(0, n):
     point = []
     for j in range(0, m):
@@ -42,6 +42,7 @@ x_svc = list(svc.coef_[0])
 x_svc.append(svc.intercept_[0])
 predicted_labels = svc.predict(dataset)
 err_orig = 1 - accuracy_score(labels, predicted_labels)
+options = {'maxiter': 200}
 
 
 def class_obj_inf(x, g):
@@ -49,28 +50,34 @@ def class_obj_inf(x, g):
     for i in range(0, n):
         av += max(1-labels[i]*(np.dot(dataset[i], x[:m])+x[m]+g[i]), 0)
     return np.dot(x[:m], x[:m])/2.0 + C*av
-x0 = np.array([1 for i in range(0, m+1)])
+x0 = np.array([1.0 for i in range(0, m+1)])
 w = x0[:m]
 b = x0[m]
 
 
 def clas_obj_min(g):
-    sol = minimize(class_obj_inf, x0, args=[g])
+    sol = minimize(class_obj_inf, x0, args=g, method='SLSQP', options=options)
     w = sol.x[:m]
     b = sol.x[m]
     if not sol.success:
         print(sol.message)
         print('nit = ' + str(sol.nit))
-    return -sol.fun
+        return 0
+    else:
+        return -sol.fun
 
 
 def adv_norm_constr(g):
-    return -sum([g[i]**2])/n + np.dot(w, w)*(eps**2)
+    av = 0.0
+    for i in range(0, n):
+        print(g[i])
+        av += g[i]**2
+    return -av/n + np.dot(w, w)*(eps**2)
 
 
 con1 = {'type': 'ineq', 'fun': adv_norm_constr}
 cons = [con1]
-g0 = np.array([1 for i in range(0, n)])
+g0 = np.array([1.0 for i in range(0, n)])
 sol_adv = minimize(clas_obj_min, g0, constraints=cons)
 print(sol_adv.message)
 print(sol_adv.nit)
