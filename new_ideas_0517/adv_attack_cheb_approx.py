@@ -12,10 +12,10 @@ colors = []
 n = 100  # training set size
 m = 2  # features
 a = 0  # attack size
-es = 9  # eps size
-eps_list = [5*i for i in range(0, es)]
+es = 6  # eps size
+eps_list = [4*i for i in range(0, es)]
 C = 1.0  # SVM regularization parameter
-nsim = 100
+nsim = 50
 # x[:m] = w
 # x[m] = b
 # x[m+1:n+m+1] = h[:][0]
@@ -27,7 +27,7 @@ for i in range(0, n):
         point.append(uniform(0, 100))
     dataset.append(point)
     # change
-    if sum([p**2 for p in point]) >= 50**2 * m:
+    if sum([p for p in point]) >= 50 * m:
         labels.append(1.0)
         colors.append((1, 0, 0))
     else:
@@ -38,8 +38,10 @@ for i in range(0, n):
 for i in range(0, a):
     if labels[i] == 1:
         labels[i] = -1
+        colors[i] = (0, 0, 1)
     else:
         labels[i] = 1
+        colors[i] = (1, 0, 0)
 
 
 def chebyshev_subdiff_inf(x):
@@ -90,15 +92,20 @@ def chebyshev_subdiff_orig(x, h):
 def wsign_constr_inf(x):
     neywxb = 0.0
     for i in range(0, m):
-        neywxb += (labels[i]*(np.dot(x[:m], [dataset[i][k]+x[k*n+i+1+m] for k in range(0, m)]) + x[m]))
-    return neywxb
+        #neywxb += (labels[i]*(np.dot(x[:m], [dataset[i][k]+x[k*n+i+1+m] for k in range(0, m)]) + x[m]))
+        #neywxb += 1.0 if labels[i]*(np.dot(x[:m], [dataset[i][k]+x[k*n+i+1+m] for k in range(0, m)]) + x[m]) > 0 else 0.0
+        neywxb += max(1 -labels[i]*(np.dot(x[:m], [dataset[i][k]+x[k*n+i+1+m] for k in range(0, m)]) + x[m]),0)
+    return -neywxb/n + 0.5
 
 
+# noinspection PyTypeChecker
 def wsign_constr_orig(x, h):
     neywxb = 0.0
     for i in range(0, m):
-        neywxb += (labels[i]*(np.dot(x[:m], [dataset[i][k] + h[j * n + i] for k in range(0, m)]) + x[m]))
-    return neywxb
+        #neywxb += (labels[i]*(np.dot(x[:m], [dataset[i][k] + h[j * n + i] for k in range(0, m)]) + x[m]))
+        #neywxb += 1.0 if labels[i] * (np.dot(x[:m], [dataset[i][k] + h[j * n + i] for k in range(0, m)]) + x[m]) > 0 else 0.0
+        neywxb += max(1 - labels[i] * (np.dot(x[:m], [dataset[i][k] + h[j * n + i] for k in range(0, m)]) + x[m]), 0)
+    return -neywxb/n + 0.5
 
 '''x0 = np.array([1.0 for i in range(0, m+1)])
 sol = root(chebyshev_subdiff, x0)
@@ -143,7 +150,7 @@ def attack_norm_constr(x, eps):
 con1 = {'type': 'eq', 'fun': chebyshev_subdiff_inf}
 con2 = {'type': 'ineq', 'fun': wsign_constr_inf}
 x0 = np.array([1.0 for i in range(0, m+1+n*m)])
-options = {'maxiter': 200}
+options = {'maxiter': 300}
 errs = []
 errs_cheb = []
 colors_h = []
@@ -170,8 +177,8 @@ for eps in eps_list:
         h20 = list(h)
         ds_inf20 = list(dataset_infected)
     errs_cheb.append(1 - accuracy_score(labels, np.sign([np.dot(dataset[i], w)+b for i in range(0, n)])))
-    svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
-    errs.append(1 - accuracy_score(labels, svc.predict(dataset)))
+    '''svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
+    errs.append(1 - accuracy_score(labels, svc.predict(dataset)))'''
     colors_h.append((1, 0, 0))
 
 plt.subplot(221)
@@ -200,23 +207,30 @@ for eps in eps_list:
             h_maxerr = list(h)'''
         x0 = np.array([1.0 for i in range(0, m + 1)])
         sol = root(chebyshev_subdiff_orig, x0, args=h)
-        print(sol.success)
-        print(sol.message)
+        if not sol.success:
+            print(sol.message)
         if wsign_constr_orig(sol.x, h) >= 0:
             w = sol.x[:m]
             b = sol.x[m]
         else:
             w = -sol.x[:m]
             b = -sol.x[m]
-        if maxerr < 1 - accuracy_score(labels, np.sign([np.dot(dataset[i], w)+b for i in range(0, n)])):
-            maxerr = 1 - accuracy_score(labels, np.sign([np.dot(dataset[i], w)+b for i in range(0, n)]))
+        err = 1 - accuracy_score(labels, np.sign([np.dot(dataset[i], w)+b for i in range(0, n)]))
+        if eps == 20:
+            ds_inf20_rand = list(dataset_infected)
+        if maxerr < min(err, 1 - err):
+            maxerr = min(err, 1 - err)
     errs_cheb.append(maxerr)
     colors_h.append((0, 1, 0))
+    print('rand for eps = '+str(eps)+' is done')
 
 plt.subplot(223)
-plt.title('optimization attacks vs best random(out of 100 sim.)')
+plt.title('err by opt. attacks vs best random(out of 100 sim.)')
 plt_opt = plt.scatter(eps_list, errs_cheb[:es], c=colors_h[:es])
 plt_sim = plt.scatter(eps_list, errs_cheb[es:], c=colors_h[es:])
 plt.legend([plt_opt, plt_sim], ['optimization', 'simulation'])
+plt.subplot(224)
+plt.title('infected dataset (random), eps = 20')
+plt.scatter([float(i[0]) for i in ds_inf20_rand], [float(i[1]) for i in ds_inf20_rand], c=colors, cmap=plt.cm.coolwarm)
 plt.show()
 

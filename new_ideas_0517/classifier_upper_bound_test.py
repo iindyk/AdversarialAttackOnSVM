@@ -103,7 +103,7 @@ x_opt = np.array([1.0 for i in range(0, m+n+1)])
 u = 0.0
 v = class_obj_orig(x_svc)+C*n*(np.dot(x_svc[:m], x_svc[:m]))**0.5 * eps
 options = {'maxiter': 100}
-while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit and v-u > 1e-10:
+while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit and v-u > 1e-15:
     print('iteration '+str(nit))
     con1 = {'type': 'ineq', 'fun': attack_norm_constr, 'args': [w_opt]}
     con2 = {'type': 'ineq', 'fun': class_constr, 'args': [u, v]}
@@ -119,12 +119,12 @@ while abs(w_svc[0]/w_opt[0] - w_svc[1]/w_opt[1]) > delta and nit < maxit and v-u
     print('obj = '+str(sol.fun))
     if not sol.success:
         print('u = '+str(u)+' v = '+str(v)+' no sol')
-        tmp = u
-        u = v
-        v = 2*v - tmp
+        tmp = v
+        v = u
+        u = 2*u - tmp
     else:
         print('u = ' + str(u) + ' v = ' + str(v) + ' exist sol')
-        v = (u+v)/2
+        u = (u+v)/2
     sol.clear()
     # restoring h
     h0 = np.array([1 for i in range(0, 2 * n)])
