@@ -10,14 +10,14 @@ dataset = []
 labels = []
 colors = []
 colors_h = []
-n = 50  # training set size (must be larger than m to avoid fuck up)
+n = 10  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
-attack_size = 10  # random attack size
+attack_size = 0  # random attack size
 A = 0
 B = 100
 eps = 0.1*(B-A)  # upper bound for norm of h
-delta = 1e-7  # iteration precision level
+delta = 1e-2  # iteration precision level
 maxit = 100  # iteration number limit
 for i in range(0, n):
     point = []
@@ -25,7 +25,7 @@ for i in range(0, n):
         point.append(uniform(A, B))
     dataset.append(point)
     # change
-    if sum([p**2 for p in point]) >= 5000:
+    if sum([p for p in point]) >= m*(B-A)/2:
         labels.append(1.0)
         colors.append((1, 0, 0))
     else:
@@ -41,67 +41,89 @@ for i in range(0, attack_size):
         labels[i] = 1
         colors[i] = (1, 0, 0)
 svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
-x_svc = list(svc.coef_[0])
-x_svc.append(svc.intercept_[0])
 predicted_labels = svc.predict(dataset)
 err_orig = 1 - accuracy_score(labels, predicted_labels)
 print('err on orig is '+str(err_orig))
 
 
 def decompose_x(x):
-    return np.array(x[:m]), x[m], np.array(x[m+1:m*n+1]), np.array(x[m*n+1:(m+1)*n+1]), \
-           np.array(x[(m+1)*n+1:(m+2)*n+1]),np.array(x[(m+2)*n+1:(m+3)*n+1])   # w, b, h_hat, g, l, a
+    return np.array(x[:m]), x[m], np.array(x[m+1:m*n+m+1]), np.array(x[m*n+m+1:(m+1)*n+m+1]), \
+           np.array(x[(m+1)*n+m+1:(m+2)*n+m+1]), np.array(x[(m+2)*n+m+1:(m+3)*n+m+1])   # w, b, h_hat, g, l, a
+
+bnds = []
+for j in range(0, (m+1)*n+m+1):
+    bnds.append((-1000, 1000))
+for i in range(0, n):
+    bnds.append((0, C))
+for i in range(0, n):
+    bnds.append((0, 1000))
 
 
 def adv_obj(x):
     av = 0.0
     for i in range(0, n):
         av += max(labels[i]*(np.dot(dataset[i], x[:m])+x[m]), -1.0)
-    return av/n
+    return av
 
 
-def class_constr_inf_eq(x, h_prev, l_prev):
+def class_constr_inf_eq(x, w_prev, l_prev):
     ret = []
     w, b, h_hat, g, l, a = decompose_x(x)
     for j in range(0, m):
-        ret.append(w[j] - C*sum([l[i]*labels[i]*dataset[i][j]+h_hat[j*n+i] for i in range(0, n)]))
+        ret.append(w[j] - sum([l[i]*labels[i]*dataset[i][j]+h_hat[j*n+i] for i in range(0, n)]))
     ret.append(sum([l[i]*labels[i] for i in range(0, n)]))
     for i in range(0, n):
-        ret.append(l[i] - a[i] - l_prev[i]*labels[i]*(np.dot(w, dataset[i]) + g[i] + b))
-        hi_prev = [h_prev[j*n +1] for j in range(0, m)]
-        ret.append(np.dot(w, hi_prev) - l_prev[i]*g[i])
+        ret.append(l[i] - a[i] - l[i]*labels[i]*(np.dot(w, dataset[i]) + g[i] + b))
+        hi = [h_hat[j*n +i] for j in range(0, m)]
+        ret.append(1e-1*(np.dot(w_prev, hi) - l_prev[i]*g[i]))
     return ret
 
 
 def class_constr_inf_ineq(x):
     ret = []
-    av = 0.0
     w, b, h_hat, g, l, a = decompose_x(x)
     for i in range(0, n):
-        ret.append(l[i])
-        ret.append(1.0/n - l[i])
-        ret.append(labels[i]*(np.dot(w, dataset[i])+g[i]+b)-1+n*a[i])
-    ret.append(eps/n - np.dot(h_hat, h_hat))
+        #ret.append(l[i])
+        #ret.append(C - l[i])
+        #ret.append(a[i])
+        ret.append(labels[i]*(np.dot(w, dataset[i])+g[i]+b)-1+a[i]/C)
+    ret.append(eps*(C**2)*n - np.dot(h_hat, h_hat))
+    ret.append(1 - np.dot(w, w))
     return ret
 
 
-x_opt = np.array([1.0 for i in range(0, (m+3)*n+1)])
+x_opt = np.array([1.0/n for i in range(0, (m+3)*n+m+1)])
 w, b, h_hat, g, l, a = decompose_x(x_opt)
-h_prev = np.array([0.0 for i in range(0, m*n)])
-l_prev = np.array([0.0 for i in range(0, n)])
+w_prev = np.array([0.5 for i in range(0, m)])
+l_prev = np.array([0.5 for i in range(0, n)])
+x_prev = np.array([0.5 for i in range(0, (m+3)*n+m+1)])
 nit = 0
-while (np.linalg.norm(h_hat - h_prev) > delta or np.linalg.norm(l-l_prev) > delta) and nit<maxit:
-    h_prev = h_hat[:]
+options = {'maxiter': 1000}
+fl = True
+while (adv_obj(x_prev) < adv_obj(x_opt) or fl
+        #np.linalg.norm([w[i]-w_prev[i] for i in range(0, m)]) > delta
+       #or np.linalg.norm([l[i]-l_prev[i] for i in range(0, n)]) > delta
+       or not sol.success) and nit < maxit:
+    fl = False
+    x_prev = x_opt[:]
+    w_prev = w[:]
     l_prev = l[:]
     print('iteration ' + str(nit))
-    con1 = {'type': 'eq', 'fun': class_constr_inf_eq, 'args': [h_prev, l_prev]}
+    con1 = {'type': 'eq', 'fun': class_constr_inf_eq, 'args': [w_prev, l_prev]}
     con2 = {'type': 'ineq', 'fun': class_constr_inf_ineq}
     cons = [con1, con2]
-    sol = minimize(adv_obj, x_opt, constraints=cons)
+    sol = minimize(adv_obj, x_opt, constraints=cons, bounds=bnds, options=options)
     print(sol.success)
     print(sol.message)
-    x_opt = sol.x
+    x_opt = sol.x[:]
     w, b, h_hat, g, l, a = decompose_x(x_opt)
+    print(w)
+    print(b)
+    #print(h_hat)
+    #print(g)
+    #print(l)
+    #print(a)
+    nit += 1
 
 dataset_infected = []
 h = []
@@ -112,7 +134,7 @@ for i in range(0, n):
     temp = []
     for j in range(0, m):
         temp.append(dataset[i][j] + h[j * n + i])
-        dataset_infected.append(temp)
+    dataset_infected.append(temp)
 svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
 predicted_labels_inf_svc = svc.predict(dataset)
 err_inf_svc = 1 - accuracy_score(labels, predicted_labels_inf_svc)
