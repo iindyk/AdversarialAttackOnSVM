@@ -76,6 +76,7 @@ def class_constr_inf_eq(x, w_prev, l_prev):
         ret.append(l[i] - a[i] - l[i]*labels[i]*(np.dot(w, dataset[i]) + g[i] + b))
         hi = [h_hat[j*n +i] for j in range(0, m)]
         ret.append(1e-1*(np.dot(w_prev, hi) - l_prev[i]*g[i]))
+        ret.append(l_prev[i]*a[i] - C*a[i])
     return ret
 
 
@@ -83,9 +84,9 @@ def class_constr_inf_ineq(x):
     ret = []
     w, b, h_hat, g, l, a = decompose_x(x)
     for i in range(0, n):
-        #ret.append(l[i])
-        #ret.append(C - l[i])
-        #ret.append(a[i])
+        ret.append(l[i])
+        ret.append(C - l[i])
+        ret.append(a[i])
         ret.append(labels[i]*(np.dot(w, dataset[i])+g[i]+b)-1+a[i]/C)
     ret.append(eps*(C**2)*n - np.dot(h_hat, h_hat))
     ret.append(1 - np.dot(w, w))
