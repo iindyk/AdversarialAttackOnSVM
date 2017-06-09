@@ -10,7 +10,10 @@ dataset = []
 labels = []
 colors = []
 colors_h = []
-n = 30  # training set size (must be larger than m to avoid fuck up)
+lll = []
+lll.append(1)
+print(lll)
+n = 40  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
 attack_size = 5  # random attack size
