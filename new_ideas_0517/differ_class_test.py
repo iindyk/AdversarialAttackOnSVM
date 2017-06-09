@@ -10,10 +10,10 @@ dataset = []
 labels = []
 colors = []
 colors_h = []
-n = 100  # training set size (must be larger than m to avoid fuck up)
+n = 30  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
-attack_size = 0  # random attack size
+attack_size = 5  # random attack size
 A = 0
 B = 100
 eps = 0.1*(B-A)  # upper bound for norm of h
@@ -54,8 +54,8 @@ def class_constr_eq(x, l_prev):
         ret.append(w[j] - sum([l[i]*labels[i]*dataset[i][j] for i in range(0, n)]))
     ret.append(sum([l[i]*labels[i] for i in range(0, n)]))
     for i in range(0, n):
-        ret.append(l[i] - l_prev[i]*a[i] - l[i]*labels[i]*(np.dot(w, dataset[i]) + b))
-        ret.append((C - l_prev[i])*a[i])
+        ret.append(l[i] - l[i]*a[i] - l[i]*labels[i]*(np.dot(w, dataset[i]) + b))
+        ret.append((C - l[i])*a[i])
     return ret
 
 
@@ -92,7 +92,7 @@ nit = 0
 while (np.linalg.norm([w_prev[i] - w_opt[i] for i in range(0, m)]) > delta or not sol.success) and nit < maxit:
     print('iteration '+str(nit))
     w_prev = w_opt[:]
-    con1 = {'type': 'eq', 'fun': class_constr_eq, 'args': [l_prev]}
+    con1 = {'type': 'eq', 'fun': class_constr_eq, 'args': [l_opt]}
     con2 = {'type': 'ineq', 'fun': class_constr_ineq}
     cons = [con1, con2]
     sol = minimize(class_obj, x_opt, constraints=cons, options=options, method='SLSQP')
