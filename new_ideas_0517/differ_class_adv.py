@@ -10,7 +10,7 @@ dataset = []
 labels = []
 colors = []
 colors_h = []
-n = 10  # training set size (must be larger than m to avoid fuck up)
+n = 30  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
 attack_size = 0  # random attack size
@@ -18,7 +18,7 @@ A = 0
 B = 100
 eps = 0.1*(B-A)  # upper bound for norm of h
 delta = 1e-2  # iteration precision level
-maxit = 100  # iteration number limit
+maxit = 30  # iteration number limit
 for i in range(0, n):
     point = []
     for j in range(0, m):
@@ -80,6 +80,20 @@ def class_constr_inf_eq(x, w_prev, l_prev):
     return ret
 
 
+def class_constr_inf_eq_neg(x, w_prev, l_prev):
+    ret = []
+    w, b, h_hat, g, l, a = decompose_x(x)
+    for j in range(0, m):
+        ret.append(w[j] - sum([l[i]*labels[i]*dataset[i][j]+h_hat[j*n+i] for i in range(0, n)]))
+    ret.append(sum([l[i]*labels[i] for i in range(0, n)]))
+    for i in range(0, n):
+        ret.append(l[i] - a[i] - l[i]*labels[i]*(np.dot(w, dataset[i]) + g[i] + b))
+        hi = [h_hat[j*n +i] for j in range(0, m)]
+        ret.append(1e-1*(np.dot(w_prev, hi) - l_prev[i]*g[i]))
+        ret.append(l_prev[i]*a[i] - C*a[i])
+    return -1.0*np.array(ret)
+
+
 def class_constr_inf_ineq(x):
     ret = []
     w, b, h_hat, g, l, a = decompose_x(x)
@@ -92,8 +106,15 @@ def class_constr_inf_ineq(x):
     ret.append(1 - np.dot(w, w))
     return ret
 
-
-x_opt = np.array([1.0/n for i in range(0, (m+3)*n+m+1)])
+l_opt = []
+h_opt = []
+for i in range(0, n):
+    if i in svc.support_:
+        #l_opt.append(1.0/n)
+        l_opt.append(svc.dual_coef_[0][list(svc.support_).index(i)]/labels[i])
+    else:
+        l_opt.append(0.0)
+x_opt = list(svc.coef_[0]) + list(svc.intercept_)+[0.0 for i in range(0, m*n+n)] + l_opt + [0.0 for i in range(0, n)]
 w, b, h_hat, g, l, a = decompose_x(x_opt)
 w_prev = np.array([0.5 for i in range(0, m)])
 l_prev = np.array([0.5 for i in range(0, n)])
@@ -110,10 +131,11 @@ while (adv_obj(x_prev) < adv_obj(x_opt) or fl
     w_prev = w[:]
     l_prev = l[:]
     print('iteration ' + str(nit))
-    con1 = {'type': 'eq', 'fun': class_constr_inf_eq, 'args': [w_prev, l_prev]}
+    con1 = {'type': 'ineq', 'fun': class_constr_inf_eq, 'args': [w_prev, l_prev]}
+    con1 = {'type': 'ineq', 'fun': class_constr_inf_eq_neg, 'args': [w_prev, l_prev]}
     con2 = {'type': 'ineq', 'fun': class_constr_inf_ineq}
     cons = [con1, con2]
-    sol = minimize(adv_obj, x_opt, constraints=cons, bounds=bnds, options=options)
+    sol = minimize(adv_obj, x_opt, constraints=cons, options=options, method='COBYLA')
     print(sol.success)
     print(sol.message)
     x_opt = sol.x[:]
