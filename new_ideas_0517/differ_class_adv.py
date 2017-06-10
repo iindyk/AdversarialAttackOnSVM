@@ -16,7 +16,7 @@ C = 1.0/n  # SVM regularization parameter
 attack_size = 0  # random attack size
 A = 0
 B = 100
-eps = 0.1*(B-A)  # upper bound for norm of h
+eps = 0.05*(B-A)  # upper bound for norm of h
 delta = 1e-2  # iteration precision level
 maxit = 30  # iteration number limit
 for i in range(0, n):
@@ -120,13 +120,10 @@ w_prev = np.array([0.5 for i in range(0, m)])
 l_prev = np.array([0.5 for i in range(0, n)])
 x_prev = np.array([0.5 for i in range(0, (m+3)*n+m+1)])
 nit = 0
-options = {'maxiter': 1000}
-fl = True
-while (adv_obj(x_prev) < adv_obj(x_opt) or fl
-        #np.linalg.norm([w[i]-w_prev[i] for i in range(0, m)]) > delta
-       #or np.linalg.norm([l[i]-l_prev[i] for i in range(0, n)]) > delta
-       or not sol.success) and nit < maxit:
-    fl = False
+options = {'maxiter': 2000}
+#(adv_obj(x_prev) < adv_obj(x_opt) or fl
+while (np.linalg.norm([w[i]-w_prev[i] for i in range(0, m)]) > delta
+       or np.linalg.norm([l[i]-l_prev[i] for i in range(0, n)]) > delta) and nit < maxit:
     x_prev = x_opt[:]
     w_prev = w[:]
     l_prev = l[:]
@@ -148,18 +145,24 @@ while (adv_obj(x_prev) < adv_obj(x_opt) or fl
     #print(a)
     nit += 1
 
+print(class_constr_inf_eq(x_opt, w, l))
+print(class_constr_inf_ineq(x_opt))
 dataset_infected = []
 h = []
 for j in range(0, m):
     for i in range(0, n):
         h.append(0 if l[i] == 0 else h_hat[i+j*n]/l[i])
+
 for i in range(0, n):
     temp = []
     for j in range(0, m):
         temp.append(dataset[i][j] + h[j * n + i])
     dataset_infected.append(temp)
-svc = svm.SVC(kernel='linear', C=C).fit(dataset_infected, labels)
-predicted_labels_inf_svc = svc.predict(dataset)
+
+print(dataset_infected)
+svc1 = svm.SVC()
+svc1.fit(dataset_infected, labels)
+predicted_labels_inf_svc = svc1.predict(dataset)
 err_inf_svc = 1 - accuracy_score(labels, predicted_labels_inf_svc)
 print('err on infected dataset by svc is '+str(err_inf_svc))
 predicted_labels_inf_opt = np.sign([np.dot(dataset[i], w)+b for i in range(0, n)])
