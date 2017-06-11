@@ -18,7 +18,7 @@ A = 0
 B = 100
 eps = 0.05*(B-A)  # upper bound for norm of h
 delta = 1e-2  # iteration precision level
-maxit = 30  # iteration number limit
+maxit = 100  # iteration number limit
 for i in range(0, n):
     point = []
     for j in range(0, m):
@@ -121,17 +121,18 @@ l_prev = np.array([0.5 for i in range(0, n)])
 x_prev = np.array([0.5 for i in range(0, (m+3)*n+m+1)])
 nit = 0
 options = {'maxiter': 2000}
+fl = True
 #(adv_obj(x_prev) < adv_obj(x_opt) or fl
-while (np.linalg.norm([w[i]-w_prev[i] for i in range(0, m)]) > delta
-       or np.linalg.norm([l[i]-l_prev[i] for i in range(0, n)]) > delta) and nit < maxit:
+while  nit < maxit:
+    fl = False
     x_prev = x_opt[:]
     w_prev = w[:]
     l_prev = l[:]
     print('iteration ' + str(nit))
     con1 = {'type': 'ineq', 'fun': class_constr_inf_eq, 'args': [w_prev, l_prev]}
-    con1 = {'type': 'ineq', 'fun': class_constr_inf_eq_neg, 'args': [w_prev, l_prev]}
-    con2 = {'type': 'ineq', 'fun': class_constr_inf_ineq}
-    cons = [con1, con2]
+    con2 = {'type': 'ineq', 'fun': class_constr_inf_eq_neg, 'args': [w_prev, l_prev]}
+    con3 = {'type': 'ineq', 'fun': class_constr_inf_ineq}
+    cons = [con1, con2, con3]
     sol = minimize(adv_obj, x_opt, constraints=cons, options=options, method='COBYLA')
     print(sol.success)
     print(sol.message)
@@ -139,6 +140,13 @@ while (np.linalg.norm([w[i]-w_prev[i] for i in range(0, m)]) > delta
     w, b, h_hat, g, l, a = decompose_x(x_opt)
     print(w)
     print(b)
+    if np.linalg.norm([w[i]-w_prev[i] for i in range(0, m)]) < delta \
+        and np.linalg.norm([l[i]-l_prev[i] for i in range(0, n)]) < delta \
+            and sol.success:
+        print(w)
+        print(w_prev)
+        print('maxcv is '+str(sol.maxcv))
+        break
     #print(h_hat)
     #print(g)
     #print(l)
@@ -146,7 +154,7 @@ while (np.linalg.norm([w[i]-w_prev[i] for i in range(0, m)]) > delta
     nit += 1
 
 print(class_constr_inf_eq(x_opt, w, l))
-print(class_constr_inf_ineq(x_opt))
+print(class_constr_inf_eq(x_opt, w_prev, l_prev))
 dataset_infected = []
 h = []
 for j in range(0, m):
