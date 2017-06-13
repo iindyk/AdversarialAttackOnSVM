@@ -10,15 +10,15 @@ dataset = []
 labels = []
 colors = []
 colors_h = []
-n = 200  # training set size (must be larger than m to avoid fuck up)
+n = 20  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
-attack_size = 20  # random attack size n
+attack_size = 7  # random attack size n
 A = 0
 B = 100
 eps = 0.1*(B-A)  # upper bound for norm of h
 delta = 1e-3  # iteration precision level
-maxit = 30  # iteration number limit
+maxit = 100  # iteration number limit
 for i in range(0, n):
     point = []
     for j in range(0, m):
@@ -70,6 +70,7 @@ def class_constr_eq_neg(x, l_prev):
         ret.append((C - l_prev[i])*a[i])
     return -1.0*np.array(ret)
 
+
 def class_constr_ineq(x):
     ret = []
     w, b, l, a = decompose_x(x)
@@ -91,8 +92,8 @@ svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
 l_opt = []
 for i in range(0, n):
     if i in svc.support_:
-        l_opt.append(1.0/n)
-        #l_opt.append(svc.dual_coef_[0][list(svc.support_).index(i)]/labels[i])
+        #l_opt.append(1.0/n)
+        l_opt.append(svc.dual_coef_[0][list(svc.support_).index(i)]/labels[i])
     else:
         l_opt.append(0.0)
 x_opt = list(svc.coef_[0]) + list(svc.intercept_) + l_opt + [0.0 for i in range(0, n)]

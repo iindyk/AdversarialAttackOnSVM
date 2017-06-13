@@ -10,13 +10,13 @@ dataset = []
 labels = []
 colors = []
 colors_h = []
-n = 30  # training set size (must be larger than m to avoid fuck up)
+n = 10  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
 attack_size = 0  # random attack size
 A = 0
 B = 100
-eps = 0.05*(B-A)  # upper bound for norm of h
+eps = 0.1*(B-A)  # upper bound for norm of h
 delta = 1e-2  # iteration precision level
 maxit = 100  # iteration number limit
 for i in range(0, n):
@@ -73,9 +73,9 @@ def class_constr_inf_eq(x, w_prev, l_prev):
         ret.append(w[j] - sum([l[i]*labels[i]*dataset[i][j]+h_hat[j*n+i] for i in range(0, n)]))
     ret.append(sum([l[i]*labels[i] for i in range(0, n)]))
     for i in range(0, n):
-        ret.append(l[i] - a[i] - l[i]*labels[i]*(np.dot(w, dataset[i]) + g[i] + b))
+        ret.append(l[i] - a[i] - l_prev[i]*labels[i]*(np.dot(w, dataset[i]) + g[i] + b))
         hi = [h_hat[j*n +i] for j in range(0, m)]
-        ret.append(1e-1*(np.dot(w_prev, hi) - l_prev[i]*g[i]))
+        ret.append(np.dot(w_prev, hi) - l_prev[i]*g[i])
         ret.append(l_prev[i]*a[i] - C*a[i])
     return ret
 
@@ -87,9 +87,9 @@ def class_constr_inf_eq_neg(x, w_prev, l_prev):
         ret.append(w[j] - sum([l[i]*labels[i]*dataset[i][j]+h_hat[j*n+i] for i in range(0, n)]))
     ret.append(sum([l[i]*labels[i] for i in range(0, n)]))
     for i in range(0, n):
-        ret.append(l[i] - a[i] - l[i]*labels[i]*(np.dot(w, dataset[i]) + g[i] + b))
+        ret.append(l[i] - a[i] - l_prev[i]*labels[i]*(np.dot(w, dataset[i]) + g[i] + b))
         hi = [h_hat[j*n +i] for j in range(0, m)]
-        ret.append(1e-1*(np.dot(w_prev, hi) - l_prev[i]*g[i]))
+        ret.append(np.dot(w_prev, hi) - l_prev[i]*g[i])
         ret.append(l_prev[i]*a[i] - C*a[i])
     return -1.0*np.array(ret)
 
@@ -102,6 +102,7 @@ def class_constr_inf_ineq(x):
         ret.append(C - l[i])
         ret.append(a[i])
         ret.append(labels[i]*(np.dot(w, dataset[i])+g[i]+b)-1+a[i]/C)
+    ret.append(eps*n - np.dot(g, g))
     ret.append(eps*(C**2)*n - np.dot(h_hat, h_hat))
     ret.append(1 - np.dot(w, w))
     return ret
@@ -120,11 +121,9 @@ w_prev = np.array([0.5 for i in range(0, m)])
 l_prev = np.array([0.5 for i in range(0, n)])
 x_prev = np.array([0.5 for i in range(0, (m+3)*n+m+1)])
 nit = 0
-options = {'maxiter': 2000}
-fl = True
+options = {'maxiter': 1000}
 #(adv_obj(x_prev) < adv_obj(x_opt) or fl
-while  nit < maxit:
-    fl = False
+while nit < maxit:
     x_prev = x_opt[:]
     w_prev = w[:]
     l_prev = l[:]
@@ -154,13 +153,13 @@ while  nit < maxit:
     nit += 1
 
 print(class_constr_inf_eq(x_opt, w, l))
-print(class_constr_inf_eq(x_opt, w_prev, l_prev))
+print(class_constr_inf_ineq(x_opt))
 dataset_infected = []
 h = []
 for j in range(0, m):
     for i in range(0, n):
-        h.append(0 if l[i] == 0 else h_hat[i+j*n]/l[i])
-
+        h.append(0 if abs(l[i]) < delta else h_hat[i+j*n]/l[i])
+print('attack norm is '+str(np.dot(h, h)/n))
 for i in range(0, n):
     temp = []
     for j in range(0, m):
@@ -170,10 +169,52 @@ for i in range(0, n):
 print(dataset_infected)
 svc1 = svm.SVC()
 svc1.fit(dataset_infected, labels)
-predicted_labels_inf_svc = svc1.predict(dataset)
+predicted_labels_inf_svc = svc1.predict(dataset_infected)
 err_inf_svc = 1 - accuracy_score(labels, predicted_labels_inf_svc)
 print('err on infected dataset by svc is '+str(err_inf_svc))
 predicted_labels_inf_opt = np.sign([np.dot(dataset[i], w)+b for i in range(0, n)])
 err_inf_opt = 1 - accuracy_score(labels, predicted_labels_inf_opt)
 print('err on infected dataset by opt is '+str(err_inf_opt))
 
+plt.subplot(221)
+plt.title('original')
+plt.scatter([float(i[0]) for i in dataset], [float(i[1]) for i in dataset], c=colors, cmap=plt.cm.coolwarm)
+plt.subplot(222)
+plt.title('infected')
+plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
+plt.subplot(223)
+h = 1  # step size in the mesh
+
+x_min, x_max = -50, 150
+y_min, y_max = -50, 150
+xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                     np.arange(y_min, y_max, h))
+Z_list = []
+for i in range(x_min, x_max):
+    for j in range(y_min, y_max):
+        Z_list.append(np.sign(xx[i][j]*w[0] + yy[i][j]*w[1]+b))
+
+Z = np.array(Z_list)
+Z = Z.reshape(xx.shape)
+plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
+plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
+plt.xlabel('feature1')
+plt.ylabel('feature2')
+plt.xlim(xx.min(), xx.max())
+plt.ylim(yy.min(), yy.max())
+plt.xticks(())
+plt.yticks(())
+plt.subplot(224)
+xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                     np.arange(y_min, y_max, h))
+Z = svc.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
+plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
+plt.xlabel('feature1')
+plt.ylabel('feature2')
+plt.xlim(xx.min(), xx.max())
+plt.ylim(yy.min(), yy.max())
+plt.xticks(())
+plt.yticks(())
+plt.show()

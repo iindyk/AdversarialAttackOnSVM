@@ -97,14 +97,14 @@ w[0] = solution.x[0]
 w[1] = solution.x[1]
 b = solution.x[2]
 
-x_min, x_max = 0, 200
-y_min, y_max = 0, 200
+x_min, x_max = -100, 200
+y_min, y_max = -100, 200
 xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
                      np.arange(y_min, y_max, h))
 Z_list = []
 for i in range(x_min, x_max):
     for j in range(y_min, y_max):
-        Z_list.append(np.sign(xx[i][j]*w[0] + yy[i][j]*w[1]+b))
+        Z_list.append(np.sign(xx[j][i]*w[0] + yy[j][i]*w[1]+b))
 
 predicted_labels = np.sign([np.dot(dataset[i], w)+b for i in range(0, n)])
 acc = accuracy_score(labels, predicted_labels)
