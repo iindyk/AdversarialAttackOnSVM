@@ -10,27 +10,30 @@ import matplotlib.pyplot as plt
 dataset = []
 labels = []
 colors = []
-n = 30  # training set size (must be larger than m to avoid fuck up)
+colors_h = []
+n = 10  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
-attack_size = 0  # random attack size
+attack_size = 3  # random attack size
 A = 0
 B = 100
-eps = 1.1*(B-A)  # upper bound for (norm of h)**2
+eps = 1.0*(B-A)  # upper bound for (norm of h)**2
+maxit = 50
+delta = 1e-2
+alpha = 1.0
 for i in range(0, n):
     point = []
     for j in range(0, m):
         point.append(uniform(A, B))
+    dataset.append(point)
     # change
     if sum([p for p in point]) >= m*(B-A)/2:
         labels.append(1.0)
         colors.append((1, 0, 0))
-        point[0] += 10
     else:
         labels.append(-1.0)
         colors.append((0, 0, 1))
-        point[0] -= 10
-    dataset.append(point)
+
 # random attack
 for i in range(0, attack_size):
     if labels[i] == 1.0:
@@ -45,42 +48,54 @@ err_orig = 1 - accuracy_score(labels, predicted_labels)
 print('err on orig is '+str(err_orig))
 
 
+def decompose_x(x):
+    return np.array(x[:m]), x[m], np.array(x[m+1:m*n+m+1]), \
+           np.array(x[m*n+m+1:(m+1)*n+m+1])   # w, b, h, a
+
+
 def adv_obj(x):
     av = 0.0
     for i in range(0, n):
         av += max(labels[i]*(np.dot(dataset[i], x[:m])+x[m]), -1.0)
         #av += 1 if labels[i]*(np.dot(dataset[i], x[:m])+x[m]) > 0 else 0
         #av += labels[i]*(np.dot(dataset[i], x[:m])+x[m])
-    return av/n + np.dot(x[:m], x[:m])
+    return av/n + alpha*sum(x[m*n+m+1:])
 
 
-def class_constr_inf_ineq(x):
+def class_constr_inf_ineq(x, w_prev):
     ret = []
+    w, b, h, a = decompose_x(x)
     for i in range(0, n):
-        ret.append(labels[i]*(np.dot(x[:m], dataset[i]) + np.dot(x[:m], [x[m+1+j * n + i] for j in range(0, m)])+x[m]))
-    ret.append(eps - np.dot(x[m+1:], x[m+1:])/n)
-    ret.append(-0.01 - adv_obj(x))
+        ret.append(a[i])
+        ret.append(labels[i]*(np.dot(w, dataset[i]) + np.dot(w_prev, [h[j * n + i] for j in range(0, m)])+b)-1+a[i])
+    ret.append(eps*n - np.dot(h, h))
+    #ret.append(1 - err_orig - adv_obj(x))
     return ret
 
-x_opt = [0.05 for i in range(0, m+1+m*n)]
-options = {'maxiter': 10000}
-con = {'type': 'ineq', 'fun': class_constr_inf_ineq}
-cons = [con]
-sol = minimize(adv_obj, np.array(x_opt), constraints=cons, options=options, method='COBYLA')
-print('success: '+str(sol.success))
-print('message: '+str(sol.message))
-x_opt = sol.x[:]
-w = x_opt[:m]
-b = x_opt[m]
-h = x_opt[m+1:]
-print('nfev= '+str(sol.nfev))
-#print('maxcv= '+str(sol.maxcv))
-print('w= '+str(w))
-print('b= '+str(b))
+x_opt = np.array([1.0 for i in range(0, m+1+n*m + n)])
 
+options = {'maxiter': 3000}
+nit = 0
+while nit < maxit:
+    print('iteration '+str(nit))
+    w_p = x_opt[:m]
+    con = {'type': 'ineq', 'fun': class_constr_inf_ineq, 'args': [w_p]}
+    cons = [con]
+    sol = minimize(adv_obj, x_opt, constraints=cons, options=options, method='COBYLA')
+    print('success: '+str(sol.success))
+    print('message: '+str(sol.message))
+    x_opt = sol.x[:]
+    w, b, h, a = decompose_x(x_opt)
+    print('nfev= '+str(sol.nfev))
+    print('maxcv= '+str(sol.maxcv))
+    print('w= '+str(w))
+    print('b= '+str(b))
+    if np.linalg.norm([w[i]-w_p[i] for i in range(0, m)]) < delta \
+            and sol.success and np.dot(h, h)/n > eps - 0.1:
+        break
+    nit += 1
 
 dataset_infected = []
-print(class_constr_inf_ineq(x_opt))
 print('attack norm= '+str(np.dot(h, h)/n))
 print('objective value= '+str(sol.fun))
 for i in range(0, n):
@@ -89,6 +104,8 @@ for i in range(0, n):
         tmp.append(dataset[i][j]+h[j*n+i])
     dataset_infected.append(tmp)
 
+#print(class_constr_eq_orig(x_opt, dataset_infected))
+#print(class_constr_ineq_orig(x_opt, dataset_infected))
 
 svc1 = svm.SVC(kernel='linear', C=C)
 svc1.fit(dataset_infected, labels)
