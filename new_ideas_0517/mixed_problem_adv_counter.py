@@ -83,11 +83,11 @@ x0 = np.array([1 for i in range(0, m+n+1)])
 con1 = {'type': 'ineq', 'fun': constraint1}
 con2 = {'type': 'ineq', 'fun': constraint2}
 cons = ([con1, con2])
-options = {'maxiter': 200}
-solution = minimize(objective, x0, bounds=None, method='SLSQP', constraints=cons, options=options)
+options = {'maxiter': 20000}
+solution = minimize(objective, x0, bounds=None, method='COBYLA', constraints=cons, options=options)
 print(solution.success)
 print(solution.message)
-print(solution.nit)
+#print(solution.nit)
 w = solution.x[:m]
 b = solution.x[m]
 g = solution.x[m+1:m+n+1]

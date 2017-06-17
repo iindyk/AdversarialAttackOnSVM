@@ -13,12 +13,15 @@ colors = []
 n = 30  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
-attack_size = 0  # random attack size
+flip_size = 0  # random attack size
 A = 0
 B = 100
 eps = 0.1*(B-A)  # upper bound for (norm of h)**2
 maxit = 50
 delta = 1e-2
+###############
+#  x[:m]=w; x[m]=b; x[m+1:m+n+1]=g; x[m+n+1:m+2*n+1]=xi
+###############
 for i in range(0, n):
     point = []
     for j in range(0, m):
@@ -34,7 +37,7 @@ for i in range(0, n):
         point[0] -= 10
     dataset.append(point)
 # random attack
-for i in range(0, attack_size):
+for i in range(0, flip_size):
     if labels[i] == 1.0:
         labels[i] = -1.0
         colors[i] = (0, 0, 1)
@@ -48,24 +51,19 @@ print('err on orig is '+str(err_orig))
 
 
 def adv_obj(x):
-    av = 0.0
-    for i in range(0, n):
-        #av += max(labels[i]*(np.dot(dataset[i], x[:m])+x[m]), -1.0)
-        av += 1.0 if labels[i]*(np.dot(dataset[i], x[:m])+x[m]) > 0 else 0.0
-        #av += labels[i]*(np.dot(dataset[i], x[:m])+x[m])
-    return av/n
+    return -sum(x[m+n+1:m+2*n+1])
 
 
 def class_constr_inf_ineq(x, w_prev):
     ret = []
     for i in range(0, n):
-        ret.append(labels[i]*(np.dot(x[:m], dataset[i]) +
-                              np.dot(w_prev, [x[m+1+j * n + i] for j in range(0, m)])+x[m])-1.0)
-    ret.append(eps - np.dot(x[m+1:], x[m+1:])/n)
-    ret.append(0.99 - adv_obj(x))
+        ret.append(labels[i]*(np.dot(x[:m], dataset[i]) + x[m+1+i]+x[m])-1.0)
+        ret.append(-labels[i]*(np.dot(x[:m], dataset[i]) + x[m]) + 1.0 - x[m+n+1+i])
+    ret.append(eps*np.dot(w_prev, w_prev) - np.dot(x[m+1:m+n+1], x[m+1:m+n+1])/n)
+    ret.append(np.dot(x[:m], w_prev) - 0.01)
     return ret
 
-x_opt = [0.05 for i in range(0, m+1+m*n)]
+x_opt = [0.05 for i in range(0, m+1+2*n)]
 options = {'maxiter': 100000}
 nit = 0
 while nit < maxit:
@@ -73,22 +71,43 @@ while nit < maxit:
     w_p = x_opt[:m]
     con = {'type': 'ineq', 'fun': class_constr_inf_ineq, 'args': [w_p]}
     cons = [con]
-    sol = minimize(adv_obj, np.array(x_opt), constraints=cons, options=options, method='SLSQP')
+    sol = minimize(adv_obj, np.array(x_opt), constraints=cons, options=options, method='COBYLA')
     print('success: '+str(sol.success))
     print('message: '+str(sol.message))
     x_opt = sol.x[:]
     w = x_opt[:m]
     b = x_opt[m]
-    h = x_opt[m+1:]
+    g = x_opt[m+1:m+n+1]
     print('nfev= '+str(sol.nfev))
     #print('maxcv= '+str(sol.maxcv))
     print('w= '+str(w))
     print('b= '+str(b))
-    if np.linalg.norm([w[i]-w_p[i] for i in range(0, m)]) < delta \
-            and sol.success and np.dot(h, h)/n > eps - 0.1:
+    if np.linalg.norm([w[i]-w_p[i] for i in range(0, m)]) < delta and sol.success:
         break
     nit += 1
 
+#  restoring h
+#  h[:n] - h1s, h[n:2*n] - h2s
+
+
+def obj_h(h):
+    return np.dot(h, h)
+
+
+def constr_h(h, w, g):
+    ret = []
+    for i in range(0, n):
+        ret.append(h[i]*w[0]+h[n+i]*w[1]-g[i])
+    return ret
+
+h0 = np.array([0.1 for i in range(0, 2*n)])
+con_h = {'type': 'eq', 'fun': constr_h, 'args': [w, g]}
+cons_h = ([con_h])
+solution_h = minimize(obj_h, h0, bounds=None, constraints=cons_h)
+print(solution_h.success)
+print(solution_h.message)
+print(solution_h.nit)
+h = solution_h.x
 
 dataset_infected = []
 print(class_constr_inf_ineq(x_opt, w_p))
