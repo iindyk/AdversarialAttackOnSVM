@@ -13,7 +13,7 @@ n = 200  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
 a = 20  # random attack size
-alpha = 5  # classifier objective weight
+alpha = 10  # classifier objective weight
 A = 10
 B = 110
 val_cl = []
@@ -56,7 +56,7 @@ def objective(x):
 def adv_obj(x):
     av = 0.0
     for i in range(0, n):
-        av += max(1+labels[i]*(np.dot(dataset[i], x[:m])+x[m]), 0)
+        av += max(labels[i]*(np.dot(dataset[i], x[:m])+x[m]), -1.0)
     return av/n
 
 
@@ -91,7 +91,7 @@ print(solution.message)
 w = solution.x[:m]
 b = solution.x[m]
 g = solution.x[m+1:m+n+1]
-
+print('adv obj  = '+str(adv_obj(solution.x)))
 
 #  restoring h
 #  h[:n] - h1s, h[n:2*n] - h2s
@@ -146,8 +146,6 @@ if m == 2:
     plt.subplot(221)
     plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
     plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
-    plt.xlabel('feature1')
-    plt.ylabel('feature2')
     plt.xlim(xx.min(), xx.max())
     plt.ylim(yy.min(), yy.max())
     plt.xticks(())
@@ -159,8 +157,6 @@ if m == 2:
     plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
     # Plot also the training points
     plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
-    plt.xlabel('feature1')
-    plt.ylabel('feature2')
     plt.xlim(xx.min(), xx.max())
     plt.ylim(yy.min(), yy.max())
     plt.xticks(())
@@ -172,8 +168,6 @@ if m == 2:
     plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
     plt.scatter([float(i[0]) for i in dataset], [float(i[1]) for i in dataset], c=colors,
                 cmap=plt.cm.coolwarm)
-    plt.xlabel('feature1')
-    plt.ylabel('feature2')
     plt.xlim(xx.min(), xx.max())
     plt.ylim(yy.min(), yy.max())
     plt.xticks(())
