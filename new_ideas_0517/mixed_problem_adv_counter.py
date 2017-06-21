@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 dataset = []
 labels = []
 colors = []
-n = 200  # training set size (must be larger than m to avoid fuck up)
+n = 100  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
-a = 20  # random attack size
-alpha = 10  # classifier objective weight
+a = 2  # random attack size
+alpha = 100  # classifier objective weight
 A = 10
 B = 110
 val_cl = []
@@ -82,9 +82,9 @@ def constraint2(x):
 x0 = np.array([1 for i in range(0, m+n+1)])
 con1 = {'type': 'ineq', 'fun': constraint1}
 con2 = {'type': 'ineq', 'fun': constraint2}
-cons = ([con1, con2])
+cons = ([con1])
 options = {'maxiter': 20000}
-solution = minimize(objective, x0, bounds=None, method='COBYLA', constraints=cons, options=options)
+solution = minimize(objective, x0, bounds=None, method='SLSQP', constraints=cons, options=options)
 print(solution.success)
 print(solution.message)
 #print(solution.nit)
