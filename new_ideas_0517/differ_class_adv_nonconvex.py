@@ -15,7 +15,7 @@ colors_h = []
 n = 20  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
-attack_size = 0  # random attack size
+flip_size = 3  # random attack size
 A = 0
 B = 100
 eps = 1.0*(B-A)  # upper bound for (norm of h)**2
@@ -35,7 +35,7 @@ for i in range(0, n):
         colors.append((0, 0, 1))
 
 # random attack
-for i in range(0, attack_size):
+for i in range(0, flip_size):
     if labels[i] == 1.0:
         labels[i] = -1.0
         colors[i] = (0, 0, 1)
@@ -72,7 +72,7 @@ def class_constr_inf_eq(x, w_prev, l_prev):
         hi = [h[j * n + i] for j in range(0, m)]
         ret.append(l[i] - l_prev[i]*a[i] - l_prev[i]*labels[i]*(np.dot(w, dataset[i])+np.dot(w_prev, hi) + b))
         ret.append(l_prev[i]*a[i] - C*a[i])
-    return ret
+    return np.array(ret)
 
 
 def class_constr_inf_eq_neg(x, w_prev, l_prev):
@@ -97,8 +97,9 @@ def class_constr_inf_ineq(x, w_prev):
         ret.append(a[i])
         ret.append(labels[i]*(np.dot(w, dataset[i]) + np.dot(w_prev, [h[j * n + i] for j in range(0, m)])+b)-1+a[i])
     ret.append(eps*n - np.dot(h, h))
+    #ret.append(1 - np.dot(w, w))
     #ret.append(1 - err_orig - adv_obj(x))
-    return ret
+    return np.array(ret)
 
 l_opt = []
 h_opt = []
@@ -110,7 +111,7 @@ for i in range(0, n):
         l_opt.append(0.0)
 x_opt = list(svc.coef_[0]) + list(svc.intercept_)+[np.sqrt(eps)/(m*n) for i in range(0, m*n)] + l_opt + [0.0 for i in range(0, n)]
 
-options = {'maxiter': 10000}
+options = {'maxiter': 100000}
 nit = 0
 while nit < maxit:
     print('iteration '+str(nit)+'; start: '+str(datetime.datetime.now().time()))
@@ -126,13 +127,14 @@ while nit < maxit:
     x_opt = sol.x[:]
     w, b, h, l, a = decompose_x(x_opt)
     print('nfev= '+str(sol.nfev))
-    print('maxcv= '+str(sol.maxcv))
+    #print('maxcv= '+str(sol.maxcv))
     print('w= '+str(w))
     print('b= '+str(b))
-    x_p = w_p + [b] + h + l_p + a
-    if adv_obj(x_p) <= sol.fun+delta and class_constr_inf_eq(x_p, w_p, l_p) >= -delta \
-        and class_constr_inf_eq_neg(x_p, w_p, l_p)>=-delta \
-            and class_constr_inf_ineq(x_p, w_p) >=-delta:
+    x_p = list(w_p) + [b] + list(h) + list(l_p) + list(a)
+    if adv_obj(x_p) <= sol.fun+delta and class_constr_inf_eq(x_p, w_p, l_p).all() >= -delta \
+        and class_constr_inf_eq_neg(x_p, w_p, l_p).all() >= -delta \
+            and class_constr_inf_ineq(x_p, w_p).all() >= -delta \
+            and sol.success and np.dot(h, h) / n > eps - 0.1:
         break
     #if np.linalg.norm([w[i]-w_p[i] for i in range(0, m)]) < delta \
      #   and np.linalg.norm([l[i]-l_p[i] for i in range(0, n)]) < delta \
