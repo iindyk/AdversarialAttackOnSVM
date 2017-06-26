@@ -1,3 +1,4 @@
+import datetime
 import numpy as np
 from scipy.optimize import minimize
 
@@ -10,14 +11,14 @@ dataset = []
 labels = []
 colors = []
 colors_h = []
-n = 20  # training set size (must be larger than m to avoid fuck up)
+n = 10  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0/n  # SVM regularization parameter
-attack_size = 0  # random attack size
+attack_size = 2  # random attack size
 A = 0
 B = 100
 eps = 0.1*(B-A)  # upper bound for norm of h
-delta = 1e-4  # iteration precision level
+delta = 1e-2  # iteration precision level
 maxit = 100  # iteration number limit
 for i in range(0, n):
     point = []
@@ -92,7 +93,7 @@ def class_constr_inf_eq_neg(x, w_prev, l_prev):
     return -1.0*np.array(ret)
 
 
-def class_constr_inf_ineq(x, l_prev):
+def class_constr_inf_ineq(x, l_prev, w_prev, ub):
     ret = []
     w, b, h_hat, g, l, xi, psi = decompose_x(x)
     for i in range(0, n):
@@ -104,30 +105,10 @@ def class_constr_inf_ineq(x, l_prev):
         ret.append((l_prev[i]**2)*n*eps - sum([h_hat[n*j+i]**2 for j in range(0, m)]))  # l==0 => h_hat==0
     ret.append(eps*n - np.dot(g, g))
     ret.append(eps*(C**2)*n - np.dot(h_hat, h_hat))
-    ret.append(1 - np.dot(w, w))
-    return ret
-
-
-def class_constr_eq_orig(x, ds):
-    ret = []
-    w, b, h_hat, g, l, xi, psi = decompose_x(x)
-    for j in range(0, m):
-        ret.append(w[j] - sum([l[i]*labels[i]*ds[i][j] for i in range(0, n)]))
-    ret.append(sum([l[i]*labels[i] for i in range(0, n)]))
-    for i in range(0, n):
-        ret.append(l[i] - xi[i] - l[i]*labels[i]*(np.dot(w, ds[i]) + b))
-        ret.append(l_prev[i]*xi[i] - C*xi[i])
-    return ret
-
-
-def class_constr_ineq_orig(x, ds):
-    ret = []
-    w, b, h_hat, g, l, xi, psi = decompose_x(x)
-    for i in range(0, n):
-        ret.append(l[i])
-        ret.append(C - l[i])
-        ret.append(a[i])
-        ret.append(labels[i]*(np.dot(w, ds[i])+b)-1+a[i])
+    #ret.append(1 - np.dot(w, w))
+    #ret.append(x[0])
+    #ret.append(x[1])
+    #ret.append(ub - (w_prev[0] - x[0]) ** 2 - (w_prev[1] - x[1]) ** 2)
     return ret
 
 l_opt = []
@@ -138,40 +119,39 @@ for i in range(0, n):
         l_opt.append(svc.dual_coef_[0][list(svc.support_).index(i)]/labels[i])
     else:
         l_opt.append(0.0)
-x_opt = list(svc.coef_[0]) + list(svc.intercept_)+[0.0 for i in range(0, m*n+n)] + l_opt + [0.0 for i in range(0, 2*n)]
+x_opt = list(svc.coef_[0]) + list(svc.intercept_)+[eps/(n**2) for i in range(0, m*n+n)] + \
+        l_opt + [0.0 for i in range(0, 2*n)]
 w, b, h_hat, g, l, xi, psi = decompose_x(x_opt)
 w_prev = np.array([0.5 for i in range(0, m)])
 l_prev = np.array([0.5 for i in range(0, n)])
 nit = 0
-options = {'maxiter': 10000, 'catol': 1e-2}
+options = {'maxiter': 100000, 'catol': 1e-2}
+ub = 1
+con1 = {'type': 'ineq', 'fun': class_constr_inf_eq, 'args': [w_prev, l_prev]}
+con2 = {'type': 'ineq', 'fun': class_constr_inf_eq_neg, 'args': [w_prev, l_prev]}
+con3 = {'type': 'ineq', 'fun': class_constr_inf_ineq, 'args': [l_prev, w_prev, ub]}
+cons = [con1, con2, con3]
 #(adv_obj(x_prev) < adv_obj(x_opt) or fl
 while nit < maxit:
     x_prev = list(x_opt)
     w_prev = list(w)
     l_prev = list(l)
-    print('iteration ' + str(nit))
-    con1 = {'type': 'ineq', 'fun': class_constr_inf_eq, 'args': [w_prev, l_prev]}
-    con2 = {'type': 'ineq', 'fun': class_constr_inf_eq_neg, 'args': [w_prev, l_prev]}
-    con3 = {'type': 'ineq', 'fun': class_constr_inf_ineq, 'args': [l_prev]}
-    cons = [con1, con2, con3]
+    print('iteration: ' + str(nit)+'; start: '+str(datetime.datetime.now().time()))
     sol = minimize(adv_obj, x_opt, constraints=cons, options=options, method='COBYLA')
-    print(sol.success)
-    print(sol.message)
+    print('success: '+str(sol.success))
+    print('message: '+str(sol.message))
     x_opt = sol.x[:]
     w, b, h_hat, g, l, xi, psi = decompose_x(x_opt)
-    print(sol.nfev)
-    print(sol.maxcv)
-    print(w)
-    print(b)
+    print('nfev= '+str(sol.nfev))
+    print('maxcv= '+str(sol.maxcv))
+    print('w= '+str(w))
+    print('b= '+str(b))
     if np.linalg.norm([w[i]-w_prev[i] for i in range(0, m)]) < delta \
         and np.linalg.norm([l[i]-l_prev[i] for i in range(0, n)]) < delta \
             and sol.success:
-        print('maxcv is '+str(sol.maxcv))
         break
-    #print(h_hat)
-    #print(g)
-    #print(l)
-    #print(a)
+    if sol.success:
+        ub /= 2.0
     nit += 1
 
 

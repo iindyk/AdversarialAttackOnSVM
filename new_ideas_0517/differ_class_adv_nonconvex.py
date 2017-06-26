@@ -1,3 +1,4 @@
+import datetime
 import numpy as np
 from scipy.optimize import minimize
 
@@ -11,10 +12,10 @@ dataset = []
 labels = []
 colors = []
 colors_h = []
-n = 10  # training set size (must be larger than m to avoid fuck up)
+n = 20  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
-C = 1.0/n  # SVM regularization parameter
-attack_size = 3  # random attack size
+C = 1.0  # SVM regularization parameter
+attack_size = 0  # random attack size
 A = 0
 B = 100
 eps = 1.0*(B-A)  # upper bound for (norm of h)**2
@@ -48,8 +49,8 @@ print('err on orig is '+str(err_orig))
 
 
 def decompose_x(x):
-    return np.array(x[:m]), x[m], np.array(x[m+1:m*n+m+1]), \
-           np.array(x[m*n+m+1:(m+1)*n+m+1]), np.array(x[(m+1)*n+m+1:(m+2)*n+m+1])   # w, b, h, l, a
+    return x[:m], x[m], x[m+1:m*n+m+1], \
+           x[m*n+m+1:(m+1)*n+m+1], x[(m+1)*n+m+1:(m+2)*n+m+1]   # w, b, h, l, a
 
 
 def adv_obj(x):
@@ -94,8 +95,7 @@ def class_constr_inf_ineq(x, w_prev):
         ret.append(l[i])
         ret.append(C - l[i])
         ret.append(a[i])
-        hi = [h[j * n + i] for j in range(0, m)]
-        ret.append(labels[i]*(np.dot(w, dataset[i]) + np.dot(w_prev, hi)+b)-1+a[i])
+        ret.append(labels[i]*(np.dot(w, dataset[i]) + np.dot(w_prev, [h[j * n + i] for j in range(0, m)])+b)-1+a[i])
     ret.append(eps*n - np.dot(h, h))
     #ret.append(1 - err_orig - adv_obj(x))
     return ret
@@ -108,12 +108,12 @@ for i in range(0, n):
         l_opt.append(svc.dual_coef_[0][list(svc.support_).index(i)]/labels[i])
     else:
         l_opt.append(0.0)
-x_opt = list(svc.coef_[0]) + list(svc.intercept_)+[0.0 for i in range(0, m*n)] + l_opt + [0.0 for i in range(0, n)]
+x_opt = list(svc.coef_[0]) + list(svc.intercept_)+[np.sqrt(eps)/(m*n) for i in range(0, m*n)] + l_opt + [0.0 for i in range(0, n)]
 
-options = {'maxiter': 3000}
+options = {'maxiter': 10000}
 nit = 0
 while nit < maxit:
-    print('iteration '+str(nit))
+    print('iteration '+str(nit)+'; start: '+str(datetime.datetime.now().time()))
     w_p = x_opt[:m]
     l_p = x_opt[m*n+m+1:(m+1)*n+m+1]
     con1 = {'type': 'ineq', 'fun': class_constr_inf_eq, 'args': [w_p, l_p]}
@@ -129,10 +129,15 @@ while nit < maxit:
     print('maxcv= '+str(sol.maxcv))
     print('w= '+str(w))
     print('b= '+str(b))
-    if np.linalg.norm([w[i]-w_p[i] for i in range(0, m)]) < delta \
-        and np.linalg.norm([l[i]-l_p[i] for i in range(0, n)]) < delta \
-            and sol.success and np.dot(h, h)/n > eps - 0.1:
+    x_p = w_p + [b] + h + l_p + a
+    if adv_obj(x_p) <= sol.fun+delta and class_constr_inf_eq(x_p, w_p, l_p) >= -delta \
+        and class_constr_inf_eq_neg(x_p, w_p, l_p)>=-delta \
+            and class_constr_inf_ineq(x_p, w_p) >=-delta:
         break
+    #if np.linalg.norm([w[i]-w_p[i] for i in range(0, m)]) < delta \
+     #   and np.linalg.norm([l[i]-l_p[i] for i in range(0, n)]) < delta \
+      #      and sol.success and np.dot(h, h)/n > eps - 0.1:
+       # break
     nit += 1
 
 dataset_infected = []
@@ -174,8 +179,7 @@ Z = np.sign([i[0]*w[0]+i[1]*w[1]+b for i in np.c_[xx.ravel(), yy.ravel()]])
 Z = Z.reshape(xx.shape)
 plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
 plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
-plt.xlabel('feature1')
-plt.ylabel('feature2')
+plt.title('opt on inf data')
 plt.xlim(xx.min(), xx.max())
 plt.ylim(yy.min(), yy.max())
 plt.xticks(())
@@ -187,8 +191,20 @@ Z = svc1.predict(np.c_[xx.ravel(), yy.ravel()])
 Z = Z.reshape(xx.shape)
 plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
 plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
-plt.xlabel('feature1')
-plt.ylabel('feature2')
+plt.title('inf svc on inf data')
+plt.xlim(xx.min(), xx.max())
+plt.ylim(yy.min(), yy.max())
+plt.xticks(())
+plt.yticks(())
+
+plt.subplot(326)
+xx, yy = np.meshgrid(np.arange(x_min, x_max, step),
+                     np.arange(y_min, y_max, step))
+Z = svc1.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
+plt.scatter([float(i[0]) for i in dataset], [float(i[1]) for i in dataset], c=colors, cmap=plt.cm.coolwarm)
+plt.title('inf svc on orig data')
 plt.xlim(xx.min(), xx.max())
 plt.ylim(yy.min(), yy.max())
 plt.xticks(())
@@ -197,14 +213,14 @@ plt.yticks(())
 plt.subplot(325)
 xx, yy = np.meshgrid(np.arange(x_min, x_max, step),
                      np.arange(y_min, y_max, step))
-Z = svc1.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = svc.predict(np.c_[xx.ravel(), yy.ravel()])
 Z = Z.reshape(xx.shape)
 plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
 plt.scatter([float(i[0]) for i in dataset], [float(i[1]) for i in dataset], c=colors, cmap=plt.cm.coolwarm)
-plt.xlabel('feature1')
-plt.ylabel('feature2')
+plt.title('orig svc on orig data')
 plt.xlim(xx.min(), xx.max())
 plt.ylim(yy.min(), yy.max())
 plt.xticks(())
 plt.yticks(())
+plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
 plt.show()
