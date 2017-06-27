@@ -15,7 +15,7 @@ colors_h = []
 n = 20  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
-flip_size = 3  # random attack size
+flip_size = 0  # random attack size
 A = 0
 B = 100
 eps = 1.0*(B-A)  # upper bound for (norm of h)**2
@@ -53,12 +53,20 @@ def decompose_x(x):
            x[m*n+m+1:(m+1)*n+m+1], x[(m+1)*n+m+1:(m+2)*n+m+1]   # w, b, h, l, a
 
 
+def approx_fun(x):
+    return max(x, -1.0)
+    #return min(x, 0.0)
+    #return 1.0 if x > 0 else 0.0
+    #return x
+    #return -(1.0 if x <-1.0 else 2.0-np.exp(1+x))
+    #return -(1.0 if x < -1.0 else -x**2 - 2*x)
+    #return -0.5+2*sum([np.sin(np.pi*(2*k+1)*x/100)/(np.pi*(2*k+1)) for k in range(0, 100)])
+
+
 def adv_obj(x):
     av = 0.0
     for i in range(0, n):
-        av += max(labels[i]*(np.dot(dataset[i], x[:m])+x[m]), -1.0)
-        #av += 1 if labels[i]*(np.dot(dataset[i], x[:m])+x[m]) > 0 else 0
-        #av += labels[i]*(np.dot(dataset[i], x[:m])+x[m])
+        av += approx_fun(labels[i]*(np.dot(x[:m], dataset[i]) + x[m]))
     return av/n
 
 
@@ -111,7 +119,7 @@ for i in range(0, n):
         l_opt.append(0.0)
 x_opt = list(svc.coef_[0]) + list(svc.intercept_)+[np.sqrt(eps)/(m*n) for i in range(0, m*n)] + l_opt + [0.0 for i in range(0, n)]
 
-options = {'maxiter': 100000}
+options = {'maxiter': 10000}
 nit = 0
 while nit < maxit:
     print('iteration '+str(nit)+'; start: '+str(datetime.datetime.now().time()))
