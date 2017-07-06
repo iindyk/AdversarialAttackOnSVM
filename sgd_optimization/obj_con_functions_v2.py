@@ -74,3 +74,11 @@ def class_constr_inf_ineq_nonconv(w, b, h, l, a, dataset, labels, eps, C):
     #ret.append(1 - np.dot(w, w))
     #ret.append(1 - err_orig - adv_obj(x))
     return np.array(ret)
+
+
+def class_constr_all_eq(w, b, h, l, a, dataset, labels, eps, C):
+    ret = []
+    ret = ret + class_constr_inf_eq_nonconv(w, b, h, l, a, dataset, labels, C)
+    for f in class_constr_inf_ineq_nonconv(w, b, h, l, a, dataset, labels, eps, C):
+        ret.append(0 if f >= 0 else 1)
+    return ret
