@@ -4,6 +4,24 @@ import datetime.datetime as dt
 import sgd_optimization.obj_con_functions_v2 as of2
 
 
+def project_subspace(y, A, b, eps=np.finfo(float).eps):
+    """ Project a vector onto the subspace defined by "dot(A,x) = b".
+    """
+    m, n = A.shape
+    u, s, vh = np.linalg.svd(A)
+    # Find the first singular value to drop below the cutoff.
+    bad = (s < s[0] * eps)
+    i = bad.searchsorted(1)
+    if i < m:
+        rcond = s[i]
+    else:
+        rcond = -1
+    x0 = np.linalg.lstsq(A, b, rcond=rcond)[0]
+    null_space = vh[i:]
+    y_proj = x0 + (null_space * np.dot(null_space, y-x0)[:, np.newaxis]).sum(axis=0)
+    return y_proj
+
+
 def sgd_adv_class_sbs(dataset_full, labels_full, eps, batch_size=-1, maxit=100, precision=1e-4, info=True, lrate=1e-2):
     nit = 0
     n = len(dataset_full)

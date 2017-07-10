@@ -77,8 +77,17 @@ def class_constr_inf_ineq_nonconv(w, b, h, l, a, dataset, labels, eps, C):
 
 
 def class_constr_all_eq(w, b, h, l, a, dataset, labels, eps, C):
-    ret = []
-    ret = ret + class_constr_inf_eq_nonconv(w, b, h, l, a, dataset, labels, C)
-    for f in class_constr_inf_ineq_nonconv(w, b, h, l, a, dataset, labels, eps, C):
-        ret.append(0 if f >= 0 else 1)
+    ret = np.array([])
+    ret = np.append(ret, class_constr_inf_eq_nonconv(w, b, h, l, a, dataset, labels, C))
+    #ret = np.append(ret,
+    #                [0 if f >= 0 else 1 for f in class_constr_inf_ineq_nonconv(w, b, h, l, a, dataset, labels, eps, C)])
+    ret = np.append(ret,
+                    [0 if f >= 0 else -f for f in class_constr_inf_ineq_nonconv(w, b, h, l, a, dataset, labels, eps, C)])
     return ret
+
+
+def class_constr_all_eq_trunc_matrix(w, b, h, l, a, dataset, labels, eps, C):
+    n = len(dataset)
+    m = len(dataset[0])
+    A = np.zeros(m+(m+2)*n+1, m+(m+2)*n+1)
+    b = np.zeros(m+(m+2)*n+1)

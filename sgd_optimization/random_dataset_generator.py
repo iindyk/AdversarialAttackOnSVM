@@ -34,12 +34,12 @@ def generate_random_dataset(n=200, m=2, a=0, b=100, attack=0, read=False, write=
         if write:
             dataset_pickle = {"dataset": dataset, "labels": labels, "colors": colors}
             pickle.dump(dataset_pickle,
-                        open("C:\\Users\\HP\\PycharmProjects\\AdversarialAttackOnSVM\\datasets\\random.pickle", "wb+"),
+                        open("/home/iindyk/PycharmProjects/AdversarialAttackOnSVM/datasets/random.pickle", "wb+"),
                         pickle.HIGHEST_PROTOCOL)
     else:
         try:
             dataset_pickle = \
-                pickle.load(open("C:\\Users\\HP\\PycharmProjects\\AdversarialAttackOnSVM\\datasets\\random.pickle", "rb"))
+                pickle.load(open("/home/iindyk/PycharmProjects/AdversarialAttackOnSVM/datasets/random.pickle", "rb"))
             dataset = dataset_pickle.get("dataset")
             labels = dataset_pickle.get("labels")
             colors = dataset_pickle.get("colors")
