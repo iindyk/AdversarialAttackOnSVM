@@ -1,6 +1,6 @@
 import random
 import numpy as np
-import datetime.datetime as dt
+import datetime as dt
 import sgd_optimization.obj_con_functions_v2 as of2
 
 

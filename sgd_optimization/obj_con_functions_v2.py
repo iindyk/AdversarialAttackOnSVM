@@ -86,8 +86,43 @@ def class_constr_all_eq(w, b, h, l, a, dataset, labels, eps, C):
     return ret
 
 
-def class_constr_all_eq_trunc_matrix(w, b, h, l, a, dataset, labels, eps, C):
-    n = len(dataset)
-    m = len(dataset[0])
-    A = np.zeros(m+(m+2)*n+1, m+(m+2)*n+1)
-    b = np.zeros(m+(m+2)*n+1)
+def class_constr_all_eq_trunc_matrix(w_prev, h_prev, l_prev, dataset, labels, eps, C):
+    # x[:m]=2; x[m]=b; x[m+1:m+1+n*m]=h; x[m+1+n*m:m+1+n*(m+1)]=l; x[m+1+n*(m+1):m+1+n*(m+2)]=a
+    n, m = np.shape(dataset)
+    A = np.zeros(m+2+3*n, m+(m+2)*n+1)
+    b = np.zeros(m+2+3*n)
+    # w=\sum l_i * y_i *(x_i + h_i)
+    for j in range(0, m):
+        A[j][j] = -1.0
+        for i in range(0, n):
+            A[j][m+1+j*n+i] = l_prev[i]*labels[i]
+            A[j][n*m+m+1+i] = labels[i]*dataset[i][j]
+    # \sum l_i * y_i = 0
+    for i in range(0, n):
+        A[m][n*m+m+1+i] = labels[i]
+    # l_i - l_i * a_i - l_i * y_i * (w * x_i + w * h_i + b) = 0
+    for i in range(0, n):
+        A[m+1+i][n*m+m+1+i] = 1.0 - labels[i]*np.dot(w_prev, dataset[i])
+        A[m+1+i][m+1+(n+1)*m+i] = -l_prev[i]
+        for j in range(0, m):
+            A[m+1+i][m+1+n*j+i] = -l_prev[i]*labels[i]*w_prev[j]
+        A[m+1+i][m] = -l_prev[i]*labels[i]
+    # l_i * a_i = C * a_i
+    for i in range(0, n):
+        A[m+1+n+i][m+1+(n+1)*m+i] = C - l_prev[i]
+    # l_i * (w * x_i + w * h_i + b) = 1 - a_i
+    for i in range(0, n):
+        A[m+1+2*n+i][m+1+n*m+i] = np.dot(w_prev, dataset[i])
+        for j in range(0, m):
+            A[m+1+2*n+i][m+1+j*n+i] = w_prev[j]*l_prev[i]
+        A[m+1+2*n+i][m] = l_prev[i]
+        A[m+1+2*n+i][m+1+n*(m+1)+i] = 1.0
+        b[m+1+2*n+i] = 1.0
+    # ||h||^2 < eps
+    for i in range(0, n):
+        for j in range(0, m):
+            A[m+1+3*n][m+1+j*n+i] = h_prev[j*n+i]
+    b[m+1+3*n] = eps
+    return A, b
+
+

@@ -37,6 +37,7 @@ def generate_random_dataset(n=200, m=2, a=0, b=100, attack=0, read=False, write=
                         open("/home/iindyk/PycharmProjects/AdversarialAttackOnSVM/datasets/random.pickle", "wb+"),
                         pickle.HIGHEST_PROTOCOL)
     else:
+        print('reading data saved data, ignoring all dataset parameters')
         try:
             dataset_pickle = \
                 pickle.load(open("/home/iindyk/PycharmProjects/AdversarialAttackOnSVM/datasets/random.pickle", "rb"))
