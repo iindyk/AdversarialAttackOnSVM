@@ -7,11 +7,13 @@ import matplotlib.pyplot as plt
 
 
 eps = 100.0
-dataset, labels, colors = grd(read=True)
-n = len(dataset)
-m = len(dataset[0])
+n = 200
+m = 2
 C = 1.0/n
-w, b, h = opt.sgd_adv_class_sbs(dataset, labels, eps)
+A = 0
+B = 100
+dataset, labels, colors = grd(read=True)
+w, b, h = opt.sgd_adv_class_sbs(dataset, labels, eps, C)
 
 svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
 predicted_labels = svc.predict(dataset)

@@ -91,7 +91,7 @@ def class_constr_all_eq(w, b, h, l, a, dataset, labels, eps, C):
 def class_constr_all_eq_trunc_matrix(w_prev, h_prev, l_prev, dataset, labels, eps, C):
     # x[:m]=2; x[m]=b; x[m+1:m+1+n*m]=h; x[m+1+n*m:m+1+n*(m+1)]=l; x[m+1+n*(m+1):m+1+n*(m+2)]=a
     n, m = np.shape(dataset)
-    A = np.zeros(m+2+3*n, m+(m+2)*n+1)
+    A = np.zeros((m+2+3*n, m+(m+2)*n+1))
     b = np.zeros(m+2+3*n)
     # w=\sum l_i * y_i *(x_i + h_i)
     for j in range(0, m):

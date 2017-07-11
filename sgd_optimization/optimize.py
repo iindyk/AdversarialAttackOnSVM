@@ -26,9 +26,13 @@ def sgd_adv_class_sbs(dataset_full, labels_full, eps, C, batch_size=-1, maxit=10
     nit = 0
     n, m = np.shape(dataset_full)
     x = np.random.normal(1.0/n, 1.0 / (3.0 * n), m+1+n*(m+2))
+    x_prev = np.zeros(m+1+n*(m+2))
     if batch_size == -1: batch_size = len(dataset_full) / 10
-    while nit < maxit and np.linalg.norm(x-x_prev)>precision:
-        if info: print('Iteration ', nit, '; start at ', dt.now().time())
+    while nit < maxit and np.linalg.norm(x-x_prev) > precision:
+        if info:
+            print('Iteration ', nit, '; start at ', dt.datetime.now().time())
+            print('w = ', x[:m], 'b = ', x[m])
+            print('attack norm = ', np.dot(x[m+1:m+1+m*n], x[m+1:m+1+m*n]))
         # indices = random.sample(range(0, len(dataset_full)), batch_size)
         # dataset = [dataset_full[i] for i in indices]
         # labels = [labels_full[i] for i in indices]
