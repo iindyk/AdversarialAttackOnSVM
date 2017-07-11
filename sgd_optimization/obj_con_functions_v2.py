@@ -15,7 +15,9 @@ def adv_obj_gradient(w, b, dataset, labels):
                         for i in range(0, n)]))  # with respect to w[j]
     ret.append(sum([labels[i]*(1.0 if labels[i]*(np.dot(w, dataset[i]) + b) > -1.0 else 0.0)
                     for i in range(0, n)]))  # with respect to b
-    return ret
+    for i in range(0, (m+2)*n):
+        ret.append(0.0)  # with respect to h, l, a
+    return np.array(ret)
 
 
 def class_constr_inf_eq_conv(w, b, h, l, a, w_prev, l_prev, dataset, labels, C):

@@ -22,23 +22,20 @@ def project_subspace(y, A, b, eps=np.finfo(float).eps):
     return y_proj
 
 
-def sgd_adv_class_sbs(dataset_full, labels_full, eps, batch_size=-1, maxit=100, precision=1e-4, info=True, lrate=1e-2):
+def sgd_adv_class_sbs(dataset_full, labels_full, eps, C, batch_size=-1, maxit=100, precision=1e-4, info=True, lrate=1e-2):
     nit = 0
-    n = len(dataset_full)
-    m = len(dataset_full[0])
-    w = np.random.normal(m)
-    b = np.random.normal(1)
-    h = np.random.normal(0.0, eps / (3.0 * m), m * n)
+    n, m = np.shape(dataset_full)
+    x = np.random.normal(1.0/n, 1.0 / (3.0 * n), m+1+n*(m+2))
     if batch_size == -1: batch_size = len(dataset_full) / 10
-    while nit < maxit:
+    while nit < maxit and np.linalg.norm(x-x_prev)>precision:
         if info: print('Iteration ', nit, '; start at ', dt.now().time())
-        indices = random.sample(range(0, len(dataset_full)), batch_size)
-        dataset = [dataset_full[i] for i in indices]
-        labels = [labels_full[i] for i in indices]
-        # solve adv
-        grad = of2.adv_obj_gradient(w, b, dataset, labels)
-        w = w - lrate*grad[:m]
-        b = b - lrate*grad[m]
-        # solve class
+        # indices = random.sample(range(0, len(dataset_full)), batch_size)
+        # dataset = [dataset_full[i] for i in indices]
+        # labels = [labels_full[i] for i in indices]
+        x_prev = x[:]
+        grad = of2.adv_obj_gradient(x[:m], x[m], dataset_full, labels_full)
+        A, b = of2.class_constr_all_eq_trunc_matrix(x[:m], x[m+1:m+1+n*m], x[m+1+n*m:m+1+n*(m+1)],
+                                                    dataset_full, labels_full, eps, C)
+        x = project_subspace(x - lrate*grad, A, b)
         nit += 1
-    return w, b, h
+    return x[:m], x[m], x[m+1:m+1+n*m]
