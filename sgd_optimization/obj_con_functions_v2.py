@@ -6,17 +6,19 @@ def adv_obj(w, b, dataset, labels):
     return sum([max(labels[i]*(np.dot(w, dataset[i]) + b), -1.0) for i in range(0, n)])/n
 
 
-def adv_obj_gradient(w, b, dataset, labels):
+def adv_obj_gradient(w, b, h, dataset, labels, eps):
     ret = []
-    n = len(dataset)
-    m = len(dataset[0])
+    n, m = np.shape(dataset)
     for j in range(0, m):
         ret.append(sum([labels[i]*dataset[i][j]*(1.0 if labels[i]*(np.dot(w, dataset[i]) + b) > -1.0 else 0.0)
                         for i in range(0, n)]))  # with respect to w[j]
     ret.append(sum([labels[i]*(1.0 if labels[i]*(np.dot(w, dataset[i]) + b) > -1.0 else 0.0)
                     for i in range(0, n)]))  # with respect to b
-    for i in range(0, (m+2)*n):
-        ret.append(0.0)  # with respect to h, l, a
+    for j in range(0, m):
+        for i in range(0, n):
+            ret.append(h[j*n+i]/eps)  # with respect to h
+    for i in range(0, 2*n):
+        ret.append(0.0)  # with respect to l, a
     return np.array(ret)
 
 

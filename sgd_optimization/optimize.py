@@ -37,7 +37,7 @@ def sgd_adv_class_sbs(dataset_full, labels_full, eps, C, batch_size=-1, maxit=10
         # dataset = [dataset_full[i] for i in indices]
         # labels = [labels_full[i] for i in indices]
         x_prev = x[:]
-        grad = of2.adv_obj_gradient(x[:m], x[m], dataset_full, labels_full)
+        grad = of2.adv_obj_gradient(x[:m], x[m], x[m+1:m+n*m+1], dataset_full, labels_full, eps)
         A, b = of2.class_constr_all_eq_trunc_matrix(x[:m], x[m+1:m+1+n*m], x[m+1+n*m:m+1+n*(m+1)],
                                                     dataset_full, labels_full, eps, C)
         x = project_subspace(x - lrate*grad, A, b)
