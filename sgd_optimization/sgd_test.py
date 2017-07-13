@@ -12,8 +12,9 @@ m = 2
 C = 1.0/n
 A = 0
 B = 100
+maxit = 100
 dataset, labels, colors = grd(read=True)
-w, b, h = opt.sgd_adv_class_sbs(dataset, labels, eps, C)
+w, b, h = opt.projective_gradient_descent(dataset, labels, eps, C, maxit=maxit)
 
 svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
 predicted_labels = svc.predict(dataset)

@@ -93,8 +93,8 @@ def class_constr_all_eq(w, b, h, l, a, dataset, labels, eps, C):
 def class_constr_all_eq_trunc_matrix(w_prev, h_prev, l_prev, dataset, labels, eps, C):
     # x[:m]=2; x[m]=b; x[m+1:m+1+n*m]=h; x[m+1+n*m:m+1+n*(m+1)]=l; x[m+1+n*(m+1):m+1+n*(m+2)]=a
     n, m = np.shape(dataset)
-    A = np.zeros((m+2+3*n, m+(m+2)*n+1))
-    b = np.zeros(m+2+3*n)
+    A = np.zeros((m+3+3*n, m+(m+2)*n+1))
+    b = np.zeros(m+3+3*n)
     # w=\sum l_i * y_i *(x_i + h_i)
     for j in range(0, m):
         A[j][j] = -1.0
@@ -122,11 +122,15 @@ def class_constr_all_eq_trunc_matrix(w_prev, h_prev, l_prev, dataset, labels, ep
         A[m+1+2*n+i][m] = l_prev[i]
         A[m+1+2*n+i][m+1+n*(m+1)+i] = 1.0
         b[m+1+2*n+i] = 1.0
-    # ||h||^2 < eps
+    # E||h||^2 = eps
     for i in range(0, n):
         for j in range(0, m):
             A[m+1+3*n][m+1+j*n+i] = h_prev[j*n+i]
-    b[m+1+3*n] = eps
+    b[m+1+3*n] = eps*n
+    # ||w||^2 = 1
+    for j in range(0, m):
+        A[m+2+3*n][j] = w_prev[j]
+    b[m+2+3*n] = 1.0
     return A, b
 
 
