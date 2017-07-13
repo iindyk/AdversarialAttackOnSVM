@@ -25,6 +25,19 @@ def adv_obj(x, dataset, labels):
     return av/n
 
 
+def adv_obj_gradient(x, dataset, labels):
+    ret = []
+    n, m = np.shape(dataset)
+    for j in range(0, m):
+        ret.append(sum([labels[i]*dataset[i][j]*(1.0 if labels[i]*(np.dot(x[:m], dataset[i]) + x[m]) > -1.0 else 0.0)
+                        for i in range(0, n)]))  # with respect to w[j]
+    ret.append(sum([labels[i]*(1.0 if labels[i]*(np.dot(x[:m], dataset[i]) + x[m]) > -1.0 else 0.0)
+                    for i in range(0, n)]))  # with respect to b
+    for i in range(0, (2+m)*n):
+        ret.append(0.0)  # with respect to h, l, a
+    return np.array(ret)
+
+
 def class_constr_inf_eq(x, w_prev, l_prev, dataset, labels, C):
     ret = []
     n, m = np.shape(dataset)
@@ -39,17 +52,60 @@ def class_constr_inf_eq(x, w_prev, l_prev, dataset, labels, C):
     return np.array(ret)
 
 
+def class_constr_inf_eq_jac(x, w_prev, l_prev, dataset, labels, C):
+    n, m = np.shape(dataset)
+    ret = np.zeros((m+1+2*n, m+1+(m+2)*n))
+    w, b, h, l, a = decompose_x(x, m, n)
+    # d(con_eq[:m])/dx
+    for i in range(m):
+        # with respect to w
+        ret[i, i] = 1.0
+        # with respect to b = 0
+        # with respect to h
+        for j in range(n):
+            ret[i, m+1+j+i*n] = -l[j]*labels[j]
+        # with respect to l = 0
+        # with respect to a = 0
+    # d(con_eq[m])/dx
+    for j in range(n):
+        # with respect to l, everything else is 0
+        ret[m,m+1+n*m+j] = labels[j]
+    # d(con_eq[m+1:m+n+1])/dx
+    for i in range(n):
+        # with respect to w
+        for j in range(m):
+            ret[m+1+i, j] = -l_prev[i]*labels[i]*dataset[i][j]
+        # with respect to b
+        ret[m+1+i, m] = -l_prev[i]*labels[i]
+        # with respect to h
+        for j in range(m):
+            ret[m+1+i][m+1+j*n+i] = -l_prev[i]*labels[i]*w_prev[j]
+        # with respect to l
+        ret[m+1+i][m+1+n*m+i] = 1.0
+        # with respect to a
+        ret[m+1+i][m+1+(m+1)*n+i] = -l_prev[i]
+    # d(con_eq[m+n+1:])/dx
+    for i in range(n):
+        # with respect to a, everything else is 0
+        ret[m+1+n+i][m+1+m*n+n+i] = l_prev[i]-C
+    return ret
+
+
 def class_constr_inf_ineq(x, w_prev, dataset, labels, eps, C):
     ret = []
-    n = len(dataset)
-    m = len(dataset[0])
+    n, m = np.shape(dataset)
     w, b, h, l, a = decompose_x(x, m, n)
     for i in range(0, n):
-        ret.append(l[i])
-        ret.append(C - l[i])
-        ret.append(a[i])
         ret.append(labels[i]*(np.dot(w, dataset[i]) + np.dot(w_prev, [h[j * n + i] for j in range(0, m)])+b)-1+a[i])
     ret.append(eps*n - np.dot(h, h))
-    #ret.append(1 - np.dot(w, w))
-    #ret.append(1 - err_orig - adv_obj(x))
+    return np.array(ret)
+
+
+def class_constr_inf_ineq_jac(x, w_prev, dataset, labels, eps, C):
+    n, m = np.shape(dataset)
+    ret = np.zeros((n+1, m+1+(m+2)*n))
+    w, b, h, l, a = decompose_x(x, m, n)
+    # d(cons_ineq[:n])/dx
+    for i in range(n):
+        ret[0,0]=0
     return np.array(ret)

@@ -6,7 +6,7 @@ def adv_obj(w, b, dataset, labels):
     return sum([max(labels[i]*(np.dot(w, dataset[i]) + b), -1.0) for i in range(0, n)])/n
 
 
-def adv_obj_gradient(w, b, h, dataset, labels, eps):
+def adv_obj_gradient(w, b, dataset, labels):
     ret = []
     n, m = np.shape(dataset)
     for j in range(0, m):
@@ -14,11 +14,8 @@ def adv_obj_gradient(w, b, h, dataset, labels, eps):
                         for i in range(0, n)]))  # with respect to w[j]
     ret.append(sum([labels[i]*(1.0 if labels[i]*(np.dot(w, dataset[i]) + b) > -1.0 else 0.0)
                     for i in range(0, n)]))  # with respect to b
-    for j in range(0, m):
-        for i in range(0, n):
-            ret.append(100*h[j*n+i])  # with respect to h
-    for i in range(0, 2*n):
-        ret.append(0.0)  # with respect to l, a
+    for i in range(0, (2+m)*n):
+        ret.append(0.0)  # with respect to h, l, a
     return np.array(ret)
 
 
@@ -93,8 +90,8 @@ def class_constr_all_eq(w, b, h, l, a, dataset, labels, eps, C):
 def class_constr_all_eq_trunc_matrix(w_prev, h_prev, l_prev, dataset, labels, eps, C):
     # x[:m]=2; x[m]=b; x[m+1:m+1+n*m]=h; x[m+1+n*m:m+1+n*(m+1)]=l; x[m+1+n*(m+1):m+1+n*(m+2)]=a
     n, m = np.shape(dataset)
-    subset_num = 90
-    subset_share = 3
+    subset_num = 200
+    subset_share = 4
     A = np.zeros((m + 3 + 3 * n + subset_num, m + (m + 2) * n + 1))
     b = np.zeros(m + 3 + 3 * n + subset_num)
     # w=\sum l_i * y_i *(x_i + h_i)
@@ -116,12 +113,12 @@ def class_constr_all_eq_trunc_matrix(w_prev, h_prev, l_prev, dataset, labels, ep
     # l_i * a_i = C * a_i
     for i in range(0, n):
         A[m+1+n+i][m+1+(n+1)*m+i] = C - l_prev[i]
-    # l_i * (w * x_i + w * h_i + b) = 1 - a_i
+    # y_i * (w * x_i + w * h_i + b) = 1 - a_i
     for i in range(0, n):
-        A[m+1+2*n+i][m+1+n*m+i] = np.dot(w_prev, dataset[i])
         for j in range(0, m):
-            A[m+1+2*n+i][m+1+j*n+i] = w_prev[j]*l_prev[i]
-        A[m+1+2*n+i][m] = l_prev[i]
+            A[m+1+2*n+i][j] = labels[i]*dataset[i][j]
+            A[m+1+2*n+i][m+1+j*n+i] = w_prev[j]*labels[i]
+        A[m+1+2*n+i][m] = labels[i]
         A[m+1+2*n+i][m+1+n*(m+1)+i] = 1.0
         b[m+1+2*n+i] = 1.0
     # E||h||^2 = eps

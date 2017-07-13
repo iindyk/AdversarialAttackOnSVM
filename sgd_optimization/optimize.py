@@ -10,7 +10,11 @@ def project_subspace(y, A, b, eps=np.finfo(float).eps):
     """ Project a vector onto the subspace defined by "dot(A,x) = b".
     """
     m, n = A.shape
-    u, s, vh = np.linalg.svd(A)
+    try:
+        u, s, vh = np.linalg.svd(A)
+    except np.linalg.LinAlgError as e:
+        print(e)
+        return y/100
     # Find the first singular value to drop below the cutoff.
     bad = (s < s[0] * eps)
     i = bad.searchsorted(1)
@@ -38,7 +42,8 @@ def project_subspace_with_constr_minimize(y, w_prev, l_prev, dataset, labels, ep
     return sol.x
 
 
-def projective_gradient_descent(dataset_full, labels_full, eps, C, batch_size=-1, maxit=100, precision=1e-4, info=True, lrate=1e-2):
+def projective_gradient_descent(dataset_full, labels_full, eps, C, batch_size=-1, maxit=100,
+                                precision=1e-4, info=True, lrate=1e-2):
     nit = 0
     n, m = np.shape(dataset_full)
     # x = np.random.normal(1.0/n, 1.0 / (3.0 * n), m+1+n*(m+2))
@@ -58,7 +63,7 @@ def projective_gradient_descent(dataset_full, labels_full, eps, C, batch_size=-1
         # dataset = [dataset_full[i] for i in indices]
         # labels = [labels_full[i] for i in indices]
         x_prev = x[:]
-        grad = of2.adv_obj_gradient(x[:m], x[m], x[m+1:m+n*m+1], dataset_full, labels_full, eps)
+        grad = of2.adv_obj_gradient(x[:m], x[m], dataset_full, labels_full)
         A, b = of2.class_constr_all_eq_trunc_matrix(x[:m], x[m+1:m+1+n*m], x[m+1+n*m:m+1+n*(m+1)],
                                                     dataset_full, labels_full, eps, C)
         x = project_subspace(x - lrate*grad, A, b)
@@ -66,3 +71,27 @@ def projective_gradient_descent(dataset_full, labels_full, eps, C, batch_size=-1
         #                                          dataset_full, labels_full, eps, C)
         nit += 1
     return x[:m], x[m], x[m+1:m+1+n*m]
+
+
+def slsqp_optimization_with_gradient(dataset_full, labels_full, eps, C, batch_size=-1, maxit=100,
+                                     precision=1e-4, info=True):
+    nit = 0
+    n, m = np.shape(dataset_full)
+    # x = np.random.normal(1.0/n, 1.0 / (3.0 * n), m+1+n*(m+2))
+    x = np.zeros(m + 1 + n * (m + 2))
+    x[:m + 1] = np.random.normal(m + 1)
+    x[m + 1:m + m * n + 1] = np.random.normal(m * n)
+    x[m + 1:m + m * n + 1] = np.sqrt(n * eps) * x[m + 1:m + m * n + 1] / np.linalg.norm(x[m + 1:m + m * n + 1])
+    x[m + m * n + 1:] = np.random.normal(C / 2, C / 6, 2 * n)
+    x_prev = np.zeros(m + 1 + n * (m + 2))
+    if batch_size == -1: batch_size = len(dataset_full) / 10
+    while nit < maxit and np.linalg.norm(x - x_prev) > precision:
+        if info:
+            print('Iteration ', nit, '; start at ', dt.datetime.now().time())
+            print('w = ', x[:m], 'b = ', x[m])
+            print('attack norm = ', np.dot(x[m + 1:m + 1 + m * n], x[m + 1:m + 1 + m * n] / n))
+        x_prev = x[:]
+
+        nit += 1
+    return x[:m], x[m], x[m + 1:m + 1 + n * m]
+

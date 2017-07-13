@@ -7,15 +7,8 @@ from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 import sgd_optimization.optimize as opt
 
-n = 200
-A = np.zeros((n-5, n))
-for i in range(0, n-5):
-    A[i, i] = 1.0
-    A[n-6-i, i] = -1.0
-for i in range(0, 40):
-    np.append(A, A[0])
-b = np.zeros(n-5)
-y = np.ones(n)
-y_proj = opt.project_subspace(y, A, b)
-print(y_proj)
-print(np.max(np.dot(A, y_proj)))
+A = np.zeros((2, 2))
+A[0, 0] = 1
+A[0, 1] = 1
+print(A)
+
