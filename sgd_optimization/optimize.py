@@ -25,11 +25,14 @@ def project_subspace(y, A, b, eps=np.finfo(float).eps):
 
 
 def project_subspace_with_constr_minimize(y, w_prev, l_prev, dataset, labels, eps, C):
+    # takes too long
     x0 = np.zeros_like(y)
     con1 = {'type': 'ineq', 'fun': of1.class_constr_inf_ineq, 'args': [w_prev, dataset, labels, eps, C]}
-    con2 = {'type': 'eq', 'fun': of1.class_constr_inf_eq, 'args': [w_prev, l_prev, dataset, labels, C]}
-    cons = [con1, con2]
-    sol = minimize(lambda x: sum([(x[i]-y[i])**2 for i in range(len(x0))]), x0, constraints=cons)
+    con2 = {'type': 'ineq', 'fun': of1.class_constr_inf_eq, 'args': [w_prev, l_prev, dataset, labels, C]}
+    con3 = {'type': 'ineq', 'fun': lambda x: -1*of1.class_constr_inf_eq(x, w_prev, l_prev, dataset, labels, C)}
+    cons = [con1, con2, con3]
+    sol = minimize(lambda x: sum([(x[i]-y[i])**2 for i in range(0, len(x0))]), x0,
+                   constraints=cons, method='COBYLA')
     if not sol.success:
         print('projection failed: ', sol.message)
     return sol.x
@@ -56,10 +59,10 @@ def projective_gradient_descent(dataset_full, labels_full, eps, C, batch_size=-1
         # labels = [labels_full[i] for i in indices]
         x_prev = x[:]
         grad = of2.adv_obj_gradient(x[:m], x[m], x[m+1:m+n*m+1], dataset_full, labels_full, eps)
-        # A, b = of2.class_constr_all_eq_trunc_matrix(x[:m], x[m+1:m+1+n*m], x[m+1+n*m:m+1+n*(m+1)],
-        #                                             dataset_full, labels_full, eps, C)
-        # x = project_subspace(x - lrate*grad, A, b)
-        x = project_subspace_with_constr_minimize(x - lrate*grad, x[:m], x[m+1+n*m:m+1+(n+1)*m],
-                                                  dataset_full, labels_full, eps, C)
+        A, b = of2.class_constr_all_eq_trunc_matrix(x[:m], x[m+1:m+1+n*m], x[m+1+n*m:m+1+n*(m+1)],
+                                                    dataset_full, labels_full, eps, C)
+        x = project_subspace(x - lrate*grad, A, b)
+        # x = project_subspace_with_constr_minimize(x - lrate*grad, x[:m], x[m+1+n*m:m+1+n*(m+1)],
+        #                                          dataset_full, labels_full, eps, C)
         nit += 1
     return x[:m], x[m], x[m+1:m+1+n*m]

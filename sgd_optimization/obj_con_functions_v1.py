@@ -27,8 +27,7 @@ def adv_obj(x, dataset, labels):
 
 def class_constr_inf_eq(x, w_prev, l_prev, dataset, labels, C):
     ret = []
-    n = len(dataset)
-    m = len(dataset[0])
+    n, m = np.shape(dataset)
     w, b, h, l, a = decompose_x(x, m, n)
     for j in range(0, m):
         ret.append(w[j] - sum([l_prev[i]*labels[i]*(dataset[i][j]+h[j*n+i]) for i in range(0, n)]))
