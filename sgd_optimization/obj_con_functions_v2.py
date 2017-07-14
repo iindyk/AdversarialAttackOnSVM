@@ -95,35 +95,35 @@ def class_constr_all_eq_trunc_matrix(w_prev, h_prev, l_prev, dataset, labels, ep
     A = np.zeros((m + 3 + 3 * n + subset_num, m + (m + 2) * n + 1))
     b = np.zeros(m + 3 + 3 * n + subset_num)
     # w=\sum l_i * y_i *(x_i + h_i)
-    for j in range(0, m):
+    for j in range(m):
         A[j][j] = -1.0
-        for i in range(0, n):
+        for i in range(n):
             A[j][m+1+j*n+i] = l_prev[i]*labels[i]
             A[j][n*m+m+1+i] = labels[i]*dataset[i][j]
     # \sum l_i * y_i = 0
-    for i in range(0, n):
+    for i in range(n):
         A[m][n*m+m+1+i] = labels[i]
     # l_i - l_i * a_i - l_i * y_i * (w * x_i + w * h_i + b) = 0
-    for i in range(0, n):
+    for i in range(n):
         A[m+1+i][n*m+m+1+i] = 1.0 - labels[i]*np.dot(w_prev, dataset[i])
         A[m+1+i][m+1+(n+1)*m+i] = -l_prev[i]
-        for j in range(0, m):
+        for j in range(m):
             A[m+1+i][m+1+n*j+i] = -l_prev[i]*labels[i]*w_prev[j]
         A[m+1+i][m] = -l_prev[i]*labels[i]
     # l_i * a_i = C * a_i
-    for i in range(0, n):
+    for i in range(n):
         A[m+1+n+i][m+1+(n+1)*m+i] = C - l_prev[i]
     # y_i * (w * x_i + w * h_i + b) = 1 - a_i
-    for i in range(0, n):
-        for j in range(0, m):
+    for i in range(n):
+        for j in range(m):
             A[m+1+2*n+i][j] = labels[i]*dataset[i][j]
             A[m+1+2*n+i][m+1+j*n+i] = w_prev[j]*labels[i]
         A[m+1+2*n+i][m] = labels[i]
         A[m+1+2*n+i][m+1+n*(m+1)+i] = 1.0
         b[m+1+2*n+i] = 1.0
     # E||h||^2 = eps
-    for i in range(0, n):
-        for j in range(0, m):
+    for i in range(n):
+        for j in range(m):
             A[m+1+3*n][m+1+j*n+i] = h_prev[j*n+i]
     b[m+1+3*n] = eps*n
     # w[0] = 1
@@ -133,7 +133,7 @@ def class_constr_all_eq_trunc_matrix(w_prev, h_prev, l_prev, dataset, labels, ep
     indeces = np.random.randint(len(dataset), size=int(len(dataset) / subset_share))
     for k in range(subset_num):
         for i in indeces:
-            for j in range(0, m):
+            for j in range(m):
                 A[m+3+3*n+k][m+1+j*n+i] = h_prev[j*n+i]
         b[m+3+3*n+k] = eps*n / subset_share
     return A, b

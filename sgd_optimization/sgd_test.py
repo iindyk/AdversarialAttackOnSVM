@@ -12,10 +12,10 @@ m = 2
 C = 1.0/n
 A = 0
 B = 100
-maxit = 100
+maxit = 200
 lrate = 1e-6
-dataset, labels, colors = grd(read=True)
-w, b, h = opt.projective_gradient_descent(dataset, labels, eps, C, maxit=maxit, lrate=lrate)
+dataset, labels, colors = grd(n=200, m=2, a=0, b=100, attack=0, read=False, write=False, sep='linear')
+w, b, h = opt.slsqp_optimization_with_gradient_nonconvex(dataset, labels, eps, C)
 
 svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
 predicted_labels = svc.predict(dataset)
@@ -55,6 +55,8 @@ xx, yy = np.meshgrid(np.arange(x_min, x_max, step),
 Z = np.sign([i[0]*w[0]+i[1]*w[1]+b for i in np.c_[xx.ravel(), yy.ravel()]])
 
 Z = Z.reshape(xx.shape)
+plt.xlim(0, 100)
+plt.ylim(0, 100)
 plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
 plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
 plt.title('opt on inf data')
@@ -63,6 +65,8 @@ xx, yy = np.meshgrid(np.arange(x_min, x_max, step),
                      np.arange(y_min, y_max, step))
 Z = svc1.predict(np.c_[xx.ravel(), yy.ravel()])
 Z = Z.reshape(xx.shape)
+plt.xlim(0, 100)
+plt.ylim(0, 100)
 plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
 plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
 plt.title('inf svc on inf data')
