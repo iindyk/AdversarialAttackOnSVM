@@ -4,6 +4,7 @@ import datetime as dt
 import sgd_optimization.obj_con_functions_v2 as of2
 import sgd_optimization.obj_con_functions_v1 as of1
 from scipy.optimize import minimize
+from sklearn import svm
 
 
 def project_subspace(y, A, b, eps=np.finfo(float).eps):
@@ -97,14 +98,21 @@ def slsqp_optimization_with_gradient_convex(dataset_full, labels_full, eps, C, b
 
 
 def slsqp_optimization_with_gradient_nonconvex(dataset_full, labels_full, eps, C, info=True):
-    nit = 0
     n, m = np.shape(dataset_full)
-    # x = np.random.normal(1.0/n, 1.0 / (3.0 * n), m+1+n*(m+2))
     x0 = np.zeros(m + 1 + n * (m + 2))
-    x0[:m + 1] = np.random.normal(m + 1)
-    x0[m + 1:m + m * n + 1] = np.random.normal(m * n)
-    x0[m + 1:m + m * n + 1] = np.sqrt(n * eps) * x0[m + 1:m + m * n + 1] / np.linalg.norm(x0[m + 1:m + m * n + 1])
-    x0[m + m * n + 1:] = np.random.normal(C / 2, C / 6, 2 * n)
+    svc = svm.SVC(kernel='linear', C=C).fit(dataset_full, labels_full)
+    l_opt = []
+    for i in range(0, n):
+        if i in svc.support_:
+            l_opt.append(svc.dual_coef_[0][list(svc.support_).index(i)] / labels_full[i])
+        else:
+            l_opt.append(0.0)
+    x0[:m] = 1.0
+    x0[m] = -100.0
+    x0[m+1+m*n:m+1+n+m*n] = l_opt
+    # x0[m + 1:m + m * n + 1] = np.random.normal(size=(m * n))
+    # x0[m + 1:m + m * n + 1] = np.sqrt(n * eps) * x0[m + 1:m + m * n + 1] / np.linalg.norm(x0[m + 1:m + m * n + 1])
+    # x0[m + m * n + 1:] = np.random.normal(C / 2, C / 6, 2 * n)
     con1 = {'type': 'ineq', 'fun': of1.class_constr_inf_ineq_nonconvex, 'jac': of1.class_constr_inf_ineq_nonconvex_jac,
             'args': [dataset_full, labels_full, eps]}
     con2 = {'type': 'eq', 'fun': of1.class_constr_inf_eq_nonconvex, 'jac': of1.class_constr_inf_eq_nonconvex_jac,
@@ -126,14 +134,14 @@ def slsqp_optimization_with_gradient_nonconvex(dataset_full, labels_full, eps, C
     # bounds for a:
     for i in range(n):
         bnds.append((0.0, None))
-    sol = minimize(lambda x: -1.0*of1.adv_obj(x, dataset_full, labels_full), x0, method='SLSQP',
+    options = {'maxiter': 10000}
+    sol = minimize(lambda x: -1.0*of1.adv_obj(x, dataset_full, labels_full), x0, method='COBYLA',
                    jac=lambda x: -1.0*of1.adv_obj_gradient(x, dataset_full, labels_full),
-                   bounds=bnds, constraints=cons)
-    x = sol.x[:]
+                   bounds=bnds, constraints=cons, options=options)
+    x_opt = sol.x[:]
     if info:
         print('Iterations: ', sol.nit, '; success ', sol.success)
         print(sol.message)
-        print('w = ', x[:m], 'b = ', x[m])
-        print('attack norm = ', np.dot(x[m + 1:m + 1 + m * n], x[m + 1:m + 1 + m * n] / n))
+        print('w = ', x_opt[:m], 'b = ', x_opt[m])
     # todo
-    return x[:m], x[m], x[m + 1:m + 1 + n * m]
+    return x_opt[:m], x_opt[m], x_opt[m + 1:m + 1 + n * m]

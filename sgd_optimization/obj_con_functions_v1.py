@@ -174,7 +174,7 @@ def class_constr_inf_ineq_nonconvex(x, dataset, labels, eps):
     n, m = np.shape(dataset)
     w, b, h, l, a = decompose_x(x, m, n)
     for i in range(0, n):
-        ret.append(labels[i]*(np.dot(w, dataset[i]) + np.dot(w, [h[j * n + i] for j in range(0, m)])+b)-1+a[i])
+        ret.append(labels[i]*(np.dot(w, dataset[i]) + np.dot(w, [h[j * n + i] for j in range(m)])+b)-1+a[i])
     ret.append(eps*n - np.dot(h, h))
     return np.array(ret)
 

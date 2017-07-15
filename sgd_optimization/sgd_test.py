@@ -14,7 +14,7 @@ A = 0
 B = 100
 maxit = 200
 lrate = 1e-6
-dataset, labels, colors = grd(n=200, m=2, a=0, b=100, attack=0, read=False, write=False, sep='linear')
+dataset, labels, colors = grd(n=n, m=m, a=A, b=B, attack=0, read=False, write=False, sep='linear')
 w, b, h = opt.slsqp_optimization_with_gradient_nonconvex(dataset, labels, eps, C)
 
 svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
