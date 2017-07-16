@@ -13,9 +13,9 @@ C = 1.0/n
 A = 0
 B = 100
 maxit = 200
-lrate = 1e-6
+lrate = 1e-3
 dataset, labels, colors = grd(n=n, m=m, a=A, b=B, attack=0, read=False, write=False, sep='linear')
-w, b, h = opt.slsqp_optimization_with_gradient_nonconvex(dataset, labels, eps, C)
+w, b, h = opt.projective_gradient_descent(dataset, labels, eps, C, lrate=lrate)
 
 svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
 predicted_labels = svc.predict(dataset)

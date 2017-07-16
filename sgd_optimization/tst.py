@@ -1,6 +1,5 @@
 from casadi import *
 import numpy as N
-import matplotlib.pyplot as plt
 
 '''
 Demonstration on how to construct a fixed-step implicit Runge-Kutta integrator

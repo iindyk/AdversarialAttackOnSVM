@@ -19,6 +19,27 @@ def adv_obj_gradient(w, b, dataset, labels):
     return np.array(ret)
 
 
+def adv_obj_with_attack_norm(w, b, h, dataset, labels, eps):
+    n = len(dataset)
+    return -sum([max(labels[i]*(np.dot(w, dataset[i]) + b), -1.0) for i in range(0, n)])/n+np.dot(h, h)-n*eps
+
+
+def adv_obj_gradient_with_attack_norm(w, b, h, dataset, labels):
+    ret = []
+    n, m = np.shape(dataset)
+    for j in range(0, m):
+        ret.append(-sum([labels[i]*dataset[i][j]*(1.0 if labels[i]*(np.dot(w, dataset[i]) + b) > -1.0 else 0.0)
+                        for i in range(0, n)]))  # with respect to w[j]
+    ret.append(-sum([labels[i]*(1.0 if labels[i]*(np.dot(w, dataset[i]) + b) > -1.0 else 0.0)
+                    for i in range(0, n)]))  # with respect to b
+    for j in range(m):
+        for i in range(n):
+            ret.append(h[j*n+i])  # with respect to h
+    for i in range(0, 2*n):
+        ret.append(0.0)  # with respect to l, a
+    return np.array(ret)
+
+
 def class_constr_inf_eq_conv(w, b, h, l, a, w_prev, l_prev, dataset, labels, C):
     ret = []
     n = len(dataset)
@@ -90,10 +111,8 @@ def class_constr_all_eq(w, b, h, l, a, dataset, labels, eps, C):
 def class_constr_all_eq_trunc_matrix(w_prev, h_prev, l_prev, dataset, labels, eps, C):
     # x[:m]=2; x[m]=b; x[m+1:m+1+n*m]=h; x[m+1+n*m:m+1+n*(m+1)]=l; x[m+1+n*(m+1):m+1+n*(m+2)]=a
     n, m = np.shape(dataset)
-    subset_num = 200
-    subset_share = 4
-    A = np.zeros((m + 3 + 3 * n + subset_num, m + (m + 2) * n + 1))
-    b = np.zeros(m + 3 + 3 * n + subset_num)
+    A = np.zeros((m+1+2*n+m*n, m + (m + 2) * n + 1))
+    b = np.zeros(m+1+2*n+m*n)
     # w=\sum l_i * y_i *(x_i + h_i)
     for j in range(m):
         A[j][j] = -1.0
@@ -114,28 +133,26 @@ def class_constr_all_eq_trunc_matrix(w_prev, h_prev, l_prev, dataset, labels, ep
     for i in range(n):
         A[m+1+n+i][m+1+(n+1)*m+i] = C - l_prev[i]
     # y_i * (w * x_i + w * h_i + b) = 1 - a_i
-    for i in range(n):
-        for j in range(m):
-            A[m+1+2*n+i][j] = labels[i]*dataset[i][j]
-            A[m+1+2*n+i][m+1+j*n+i] = w_prev[j]*labels[i]
-        A[m+1+2*n+i][m] = labels[i]
-        A[m+1+2*n+i][m+1+n*(m+1)+i] = 1.0
-        b[m+1+2*n+i] = 1.0
+    #for i in range(n):
+    #    for j in range(m):
+    #        A[m+1+2*n+i][j] = labels[i]*dataset[i][j]
+    #        A[m+1+2*n+i][m+1+j*n+i] = w_prev[j]*labels[i]
+    #    A[m+1+2*n+i][m] = labels[i]
+    #    A[m+1+2*n+i][m+1+n*(m+1)+i] = 1.0
+    #    b[m+1+2*n+i] = 1.0
     # E||h||^2 = eps
+    #for i in range(n):
+    #    for j in range(m):
+    #        A[m+1+3*n][m+1+j*n+i] = h_prev[j*n+i]
+    #b[m+1+3*n] = eps*n
+    # w[0] = 1
+    #A[m+2+3*n][0] = 1.0
+    #b[m+2+3*n] = 1.0
+    # h*h_prev = h_prev**2 + 1
     for i in range(n):
         for j in range(m):
-            A[m+1+3*n][m+1+j*n+i] = h_prev[j*n+i]
-    b[m+1+3*n] = eps*n
-    # w[0] = 1
-    A[m+2+3*n][0] = 1.0
-    b[m+2+3*n] = 1.0
-    # any* random subsample of size len(dataset)/subset_size of attack vectors has norm eps/subset_size
-    indeces = np.random.randint(len(dataset), size=int(len(dataset) / subset_share))
-    for k in range(subset_num):
-        for i in indeces:
-            for j in range(m):
-                A[m+3+3*n+k][m+1+j*n+i] = h_prev[j*n+i]
-        b[m+3+3*n+k] = eps*n / subset_share
+            A[m+1+2*n+j*n+i][m+1+j*n+i] = h_prev[j*n+i]
+            b[m+1+2*n+j*n+i] = h_prev[j*n+i]**2+(1.0 if h_prev[j*n+i]**2 < eps/m else 0.0)
     return A, b
 
 
