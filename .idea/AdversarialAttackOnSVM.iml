@@ -3,7 +3,10 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/datasets" />
-      <excludeFolder url="file://$MODULE_DIR$/udacity_machine_learning" />
+      <excludeFolder url="file://$MODULE_DIR$/mzabaran" />
+      <excludeFolder url="file://$MODULE_DIR$/udacity_machine_learning/notMNIST_large" />
+      <excludeFolder url="file://$MODULE_DIR$/udacity_machine_learning/notMNIST_small" />
+      <excludeFolder url="file://$MODULE_DIR$/udacity_machine_learning/pickle" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.6.1 (~/anaconda3/bin/python)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
