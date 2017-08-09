@@ -101,6 +101,19 @@ def class_constr_inf_ineq_convex(x, w_prev, dataset, labels, eps, C):
     return np.array(ret)
 
 
+def class_constr_inf_ineq_convex_cobyla(x, w_prev, dataset, labels, eps, C):
+    ret = []
+    n, m = np.shape(dataset)
+    w, b, h, l, a = decompose_x(x, m, n)
+    for i in range(0, n):
+        ret.append(l[i])  # for cobyla only
+        ret.append(C - l[i])  # for cobyla only
+        ret.append(a[i])  # for cobyla only
+        ret.append(labels[i]*(np.dot(w, dataset[i]) + np.dot(w_prev, [h[j * n + i] for j in range(0, m)])+b)-1+a[i])
+    ret.append(eps*n - np.dot(h, h))
+    return np.array(ret)
+
+
 def class_constr_inf_ineq_convex_jac(x, w_prev, dataset, labels, eps, C):
     n, m = np.shape(dataset)
     ret = np.zeros((n+1, m+1+(m+2)*n))

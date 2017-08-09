@@ -15,7 +15,7 @@ colors_h = []
 n = 20  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
-flip_size = 2  # random attack size
+flip_size = 0  # random attack size
 A = 0
 B = 100
 eps = 1.0*(B-A)  # upper bound for (norm of h)**2
@@ -65,7 +65,7 @@ while nit < maxit:
     l_p = x_opt[m*n+m+1:(m+1)*n+m+1]
     con1 = {'type': 'ineq', 'fun': of1.class_constr_inf_eq_convex, 'args': [w_p, l_p, dataset, labels, C]}
     con2 = {'type': 'ineq', 'fun': lambda x: -of1.class_constr_inf_eq_convex(x, w_p, l_p, dataset, labels, C)}
-    con3 = {'type': 'ineq', 'fun': of1.class_constr_inf_ineq_convex, 'args': [w_p, dataset, labels, eps, C]}
+    con3 = {'type': 'ineq', 'fun': of1.class_constr_inf_ineq_convex_cobyla, 'args': [w_p, dataset, labels, eps, C]}
     cons = [con1, con2, con3]
     sol = minimize(of1.adv_obj, x_opt, args=(dataset, labels), constraints=cons, options=options, method='COBYLA')
     print('success: '+str(sol.success))
@@ -79,7 +79,7 @@ while nit < maxit:
     x_p = list(w_p) + [b] + list(h) + list(l_p) + list(a)
     if of1.adv_obj(x_p, dataset, labels) <= sol.fun+delta \
             and -delta <= of1.class_constr_inf_eq_convex(x_p, w_p, l_p, dataset, labels, C).all() <= delta \
-            and of1.class_constr_inf_ineq_convex(x_p, w_p, dataset, labels, eps, C).all() >= -delta \
+            and of1.class_constr_inf_ineq_convex_cobyla(x_p, w_p, dataset, labels, eps, C).all() >= -delta \
             and sol.success and np.dot(h, h) / n > eps - 0.1:
         break
     nit += 1
