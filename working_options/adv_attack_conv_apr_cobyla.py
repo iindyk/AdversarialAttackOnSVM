@@ -5,14 +5,14 @@ import numpy as np
 from scipy.optimize import minimize
 from sklearn import svm
 from sklearn.metrics import accuracy_score
-
 import sgd_optimization.obj_con_functions_v1 as of1
 from datasets_parsers.random_dataset_generator import generate_random_dataset as grd
+from datasets_parsers.get_truncated_dataset import truncate as trunc
 
 n = 20  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
-flip_size = 3  # random attack size
+flip_size = 0  # random attack size
 A = 0
 B = 100
 eps = 0.5*(B-A)  # upper bound for (norm of h)**2
@@ -25,7 +25,7 @@ err_orig = 1 - accuracy_score(labels, predicted_labels)
 print('err on orig is '+str(err_orig))
 
 
-w = list(svc.coef_[0])
+'''w = list(svc.coef_[0])
 b = svc.intercept_
 l = []
 for i in range(n):
@@ -36,7 +36,11 @@ for i in range(n):
     else:
         l.append(0.0)
 a = [1-min(1, labels[i]*(np.dot(w, dataset[i])+b)) for i in range(n)]
-x_opt = w + list(b)+list(np.zeros(m*n)) + l + a
+x_opt = w + list(b)+list(np.zeros(m*n)) + l + a'''
+
+dataset, labels, colors, x_opt = trunc(dataset, labels, colors, 30, C, svc)
+w = x_opt[:m]
+l = x_opt[m+1+m*n:m+1+(m+1)*n]
 options = {'maxiter': 10000}
 nit = 0
 while nit < maxit:
