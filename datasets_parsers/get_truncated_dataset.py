@@ -24,11 +24,11 @@ def truncate_by_dist(dataset, labels, colors, maxdist, C, eps, svc=None):
     w_trunc = list(svc1.coef_[0])
     b_trunc = svc1.intercept_
     # generating pilot h
-    h = np.zeros(n_t*m)
-    for i in range(n_t):
-        for j in range(m):
-            h[n_t*j+i] = np.sign(np.dot(w_trunc, dataset_trunc[i])+b_trunc) * \
-                         (w_trunc[j]/np.sqrt(np.dot(w_trunc, w_trunc)))*(np.sqrt(eps_t))
+    h = np.ones(n_t*m)*np.sqrt(eps_t/(m*n_t))
+    #for i in range(n_t):
+    #    for j in range(m):
+    #        h[n_t*j+i] = np.sign(np.dot(w_trunc, dataset_trunc[i])+b_trunc) * \
+    #                     (w_trunc[j]/np.sqrt(np.dot(w_trunc, w_trunc)))*(np.sqrt(eps_t))
     # generating vector of Lagrange multipliers
     l_trunc = []
     for i in range(len(dataset_trunc)):
@@ -66,7 +66,7 @@ def truncate_get_support(dataset, labels, colors, C, eps, svc=None):
     svc1 = svm.SVC(kernel='linear', C=C).fit(dataset_trunc, labels_trunc)
     w_trunc = list(svc1.coef_[0])
     b_trunc = svc1.intercept_
-    # generating pilot h
+    # generating pilot h as opposite to classification plane normal vector
     h = np.zeros(n_t*m)
     for i in range(n_t):
         for j in range(m):
