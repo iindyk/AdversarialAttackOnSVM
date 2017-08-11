@@ -63,7 +63,7 @@ while nit < maxit:
     #print('maxcv= '+str(sol.maxcv))
     print('w= '+str(w))
     print('b= '+str(b))
-    print('attack_norm= '+str(np.dot(h, h) / n_t))
+    print('attack_norm= '+str(100*np.dot(h, h)//(n_t*eps_t))+'%')
     if of1.adv_obj(x_opt, dataset_trunc, labels_trunc) <= sol.fun+delta \
             and max(of1.class_constr_inf_eq_convex(x_opt, w, l, dataset_trunc, labels_trunc, C)) <= delta \
             and min(of1.class_constr_inf_eq_convex(x_opt, w, l, dataset_trunc, labels_trunc, C)) >= -delta \
@@ -96,10 +96,10 @@ svc1 = svm.SVC(kernel='linear', C=C)
 svc1.fit(dataset_infected, labels)
 predicted_labels_inf_svc = svc1.predict(dataset)
 err_inf_svc = 1 - accuracy_score(labels, predicted_labels_inf_svc)
-print('err on infected dataset by svc is '+str(err_inf_svc))
+print('err on infected dataset by svc is '+str(int(100*err_inf_svc))+'%')
 predicted_labels_inf_opt = np.sign([np.dot(dataset[i], w)+b for i in range(0, n)])
 err_inf_opt = 1 - accuracy_score(labels, predicted_labels_inf_opt)
-print('err on infected dataset by opt is '+str(err_inf_opt))
+print('err on infected dataset by opt is '+str(int(100*err_inf_opt))+'%')
 
 plt.subplot(321)
 plt.title('original')
