@@ -9,13 +9,13 @@ import sgd_optimization.obj_con_functions_v1 as of1
 from datasets_parsers.random_dataset_generator import generate_random_dataset as grd
 from datasets_parsers.get_truncated_dataset import truncate as trunc
 
-n = 20  # training set size (must be larger than m to avoid fuck up)
+n = 70  # training set size (must be larger than m to avoid fuck up)
 m = 2  # features
 C = 1.0  # SVM regularization parameter
 flip_size = 0  # random attack size
 A = 0
 B = 100
-eps = 0.5*(B-A)  # upper bound for (norm of h)**2
+eps = 0.1*(B-A)  # upper bound for (norm of h)**2
 maxit = 20
 delta = 1e-2
 dataset, labels, colors = grd(n=n, m=m, a=A, b=B, attack=flip_size, read=False, write=False, sep='linear')
@@ -38,43 +38,60 @@ for i in range(n):
 a = [1-min(1, labels[i]*(np.dot(w, dataset[i])+b)) for i in range(n)]
 x_opt = w + list(b)+list(np.zeros(m*n)) + l + a'''
 
-dataset, labels, colors, x_opt = trunc(dataset, labels, colors, 30, C, svc)
+dataset_trunc, labels_trunc, colors_trunc, indices, x_opt, eps_t = trunc(dataset, labels, colors, 10, C, eps)
+n_t = len(dataset_trunc)
+print('number of closest chosen points is '+str(n_t))
 w = x_opt[:m]
-l = x_opt[m+1+m*n:m+1+(m+1)*n]
+l = x_opt[m+1+m*n_t:m+1+(m+1)*n_t]
 options = {'maxiter': 10000}
 nit = 0
 while nit < maxit:
     print('iteration '+str(nit)+'; start: '+str(datetime.datetime.now().time()))
-    con1 = {'type': 'ineq', 'fun': of1.class_constr_inf_eq_convex, 'args': [w, l, dataset, labels, C]}
-    con2 = {'type': 'ineq', 'fun': lambda x: -1*of1.class_constr_inf_eq_convex(x, w, l, dataset, labels, C)}
-    con3 = {'type': 'ineq', 'fun': of1.class_constr_inf_ineq_convex_cobyla, 'args': [w, dataset, labels, eps, C]}
+    con1 = {'type': 'ineq', 'fun': of1.class_constr_inf_eq_convex,
+            'args': [w, l, dataset_trunc, labels_trunc, C]}
+    con2 = {'type': 'ineq',
+            'fun': lambda x: -1*of1.class_constr_inf_eq_convex(x, w, l, dataset_trunc, labels_trunc, C)}
+    con3 = {'type': 'ineq', 'fun': of1.class_constr_inf_ineq_convex_cobyla,
+            'args': [w, dataset_trunc, labels_trunc, eps_t, C]}
     cons = [con1, con2, con3]
-    sol = minimize(of1.adv_obj, x_opt, args=(dataset, labels), constraints=cons, options=options, method='COBYLA')
+    sol = minimize(of1.adv_obj, x_opt, args=(dataset_trunc, labels_trunc), constraints=cons, options=options, method='COBYLA')
     print('success: '+str(sol.success))
     print('message: '+str(sol.message))
     x_opt = sol.x[:]
-    w, b, h, l, a = of1.decompose_x(x_opt, m, n)
+    w, b, h, l, a = of1.decompose_x(x_opt, m, n_t)
     print('nfev= '+str(sol.nfev))
     #print('maxcv= '+str(sol.maxcv))
     print('w= '+str(w))
     print('b= '+str(b))
-    if of1.adv_obj(x_opt, dataset, labels) <= sol.fun+delta \
-            and max(of1.class_constr_inf_eq_convex(x_opt, w, l, dataset, labels, C)) <= delta \
-            and min(of1.class_constr_inf_eq_convex(x_opt, w, l, dataset, labels, C)) >= -delta \
-            and min(of1.class_constr_inf_ineq_convex_cobyla(x_opt, w, dataset, labels, eps, C)) >= -delta \
-            and sol.success and np.dot(h, h) / n > eps - 0.1:
+    print('attack_norm= '+str(np.dot(h, h) / n_t))
+    if of1.adv_obj(x_opt, dataset_trunc, labels_trunc) <= sol.fun+delta \
+            and max(of1.class_constr_inf_eq_convex(x_opt, w, l, dataset_trunc, labels_trunc, C)) <= delta \
+            and min(of1.class_constr_inf_eq_convex(x_opt, w, l, dataset_trunc, labels_trunc, C)) >= -delta \
+            and min(of1.class_constr_inf_ineq_convex_cobyla(x_opt, w, dataset_trunc, labels_trunc, eps_t, C)) >= -delta \
+            and sol.success and np.dot(h, h) / n_t >= eps_t - delta:
         break
     nit += 1
 
 dataset_infected = []
 print('attack norm= '+str(np.dot(h, h)/n))
 print('objective value= '+str(sol.fun))
+k = 0
 for i in range(0, n):
     tmp = []
-    for j in range(0, m):
-        tmp.append(dataset[i][j]+h[j*n+i])
+    if i in indices:
+        for j in range(0, m):
+            tmp.append(dataset[i][j]+h[j*n_t+k])
+        k += 1
+    else:
+        tmp = dataset[i]
     dataset_infected.append(tmp)
-
+# define infected points for graph
+inf_points = []
+k = 0
+for i in indices:
+    if sum([h[j*n_t+k]**2 for j in range(m)]) > 0.9*eps:
+        inf_points.append(dataset_infected[i])
+    k += 1
 svc1 = svm.SVC(kernel='linear', C=C)
 svc1.fit(dataset_infected, labels)
 predicted_labels_inf_svc = svc1.predict(dataset)
@@ -103,6 +120,7 @@ Z = Z.reshape(xx.shape)
 plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
 plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
 plt.title('opt on inf data')
+plt.plot([i[0] for i in inf_points], [i[1] for i in inf_points], 'go', mfc='none')
 plt.subplot(324)
 xx, yy = np.meshgrid(np.arange(x_min, x_max, step),
                      np.arange(y_min, y_max, step))
@@ -110,6 +128,7 @@ Z = svc1.predict(np.c_[xx.ravel(), yy.ravel()])
 Z = Z.reshape(xx.shape)
 plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
 plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
+plt.plot([i[0] for i in inf_points], [i[1] for i in inf_points], 'go', mfc='none')
 plt.title('inf svc on inf data')
 
 plt.subplot(326)
