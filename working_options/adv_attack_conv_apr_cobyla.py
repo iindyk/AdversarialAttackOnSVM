@@ -6,9 +6,9 @@ from sklearn import svm
 from sklearn.metrics import accuracy_score
 import sgd_optimization.obj_con_functions_v1 as of1
 from datasets_parsers.random_dataset_generator import generate_random_dataset as grd
-from datasets_parsers.get_truncated_dataset import truncate_by_dist as trunc
+import datasets_parsers.get_truncated_dataset as tr
 
-n = 70  # training set size
+n = 200  # training set size
 m = 2  # features
 C = 1.0  # SVM regularization parameter
 flip_size = 0  # random attack size
@@ -26,7 +26,8 @@ svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
 predicted_labels = svc.predict(dataset)
 err_orig = 1 - accuracy_score(labels, predicted_labels)
 print('err on orig is '+str(int(err_orig*100))+'%')
-dataset_trunc, labels_trunc, colors_trunc, indices, x_opt, eps_t = trunc(dataset, labels, colors, maxdist, C, eps)
+dataset_trunc, labels_trunc, colors_trunc, indices, x_opt, eps_t \
+    = tr.truncate_by_dist(dataset, labels, colors, maxdist, C, eps)
 n_t = len(dataset_trunc)
 print('number of closest chosen points is '+str(n_t))
 w = x_opt[:m]
@@ -54,7 +55,7 @@ while nit < maxit:
             and max(of1.class_constr_inf_eq_convex(x_opt, w, l, dataset_trunc, labels_trunc, C)) <= delta \
             and min(of1.class_constr_inf_eq_convex(x_opt, w, l, dataset_trunc, labels_trunc, C)) >= -delta \
             and min(of1.class_constr_inf_ineq_convex_cobyla(x_opt, w, dataset_trunc, labels_trunc, eps_t, C)) >= -delta \
-            and sol.success and np.dot(h, h) / n_t >= eps_t - delta:
+            and sol.success and np.dot(h, h) / n_t >= eps_t - 10*delta:
         break
     nit += 1
 
