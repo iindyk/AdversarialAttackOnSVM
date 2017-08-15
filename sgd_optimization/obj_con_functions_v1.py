@@ -219,16 +219,13 @@ def class_constr_inf_ineq_nonconvex_jac(x, dataset, labels, eps):
 
 def class_constr_nonconvex_all_as_eq(z, w, b, dataset, labels, C, eps):
     n, m = np.shape(dataset)
-    x = list(w) + [b] + list(z)
+    x = list(w) + [b] + list(z[:(m+2)*n])
     w, b, h, l, a = decompose_x(x, m, n)
     ret = class_constr_inf_eq_nonconvex(x, dataset, labels, C)
     for cons in class_constr_inf_ineq_nonconvex(x, dataset, labels, eps):
-        np.append(ret, min(cons, 0))
+        ret = np.append(ret, min(cons, 0))
     for i in range(n):
-        np.append(ret, min(l[i], 0))
-        np.append(ret, min(C-l[i], 0))
-        np.append(ret, min(a[i], 0))
-    # for fsolve
-    while len(ret) < len(z):
-        np.append(ret, 0)
+        ret = np.append(ret, min(l[i], 0))
+        ret = np.append(ret, min(C-l[i], 0))
+        ret = np.append(ret, min(a[i], 0))
     return ret
