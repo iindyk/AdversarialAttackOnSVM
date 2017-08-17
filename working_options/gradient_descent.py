@@ -1,4 +1,4 @@
-from scipy.optimize import root
+from scipy.optimize import root, check_grad
 import matplotlib.pyplot as plt
 import datetime
 import numpy as np
@@ -17,7 +17,7 @@ B = 100  # right end of interval for generating points
 eps = 0.1*(B-A)  # upper bound for (norm of h)**2
 maxit = 30  # maximum number of iterations
 delta = 1e-2  # precision for break from iterations
-options = {'eps': 1.0}  # solver options
+options = {'diag': [50 for i in range(m*n)]+[1 for i in range(2*n+2+m+2*n)]}  # solver options
 learning_rate = 1e-5  # gradient update rate
 
 
@@ -28,7 +28,7 @@ err_orig = 1 - accuracy_score(labels, predicted_labels)
 print('err on orig is '+str(int(err_orig*100))+'%')
 nit = 0
 w = svc.coef_[0]
-b = svc.intercept_+0.1
+b = svc.intercept_
 z = np.zeros(m*n+2*n+2+m+2*n)
 for i in range(n):
     if i in svc.support_:
@@ -41,10 +41,12 @@ while nit < maxit:
     print('iteration ' + str(nit) + '; start: ' + str(datetime.datetime.now().time()))
     obj_p = obj
     grad = of1.adv_obj_gradient(list(w)+[b]+list(z), dataset, labels)
-    w = w - learning_rate*grad[:m]
-    b = b - learning_rate*grad[m]
+    if abs(of1.class_constr_nonconvex_all_as_eq(z, w, b, dataset, labels, C, eps)).sum() < delta:
+        w = w - learning_rate*grad[:m]
+        b = b - learning_rate*grad[m]
+        print('making gradient update')
     sol = root(of1.class_constr_nonconvex_all_as_eq, z, args=(w, b, dataset, labels, C, eps), method='lm',
-               options=options)
+               jac=of1.class_constr_nonconvex_all_as_eq_jac, options=options)
     if sol.success:
         z = sol.x
     print('success: '+str(sol.success))
@@ -56,7 +58,7 @@ while nit < maxit:
     print('attack_norm= '+str(100*np.dot(z[:m*n], z[:m*n])//(n*eps))+'%')
     obj = of1.adv_obj(list(w)+[b]+list(z), dataset, labels)
     nit += 1
-    if obj_p - obj < delta or not sol.success:
+    if (obj_p - obj < delta and np.dot(z[:m*n], z[:m*n]) >= n*eps - delta) or not sol.success:
         break
 
 h = z[:m*n]

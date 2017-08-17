@@ -55,7 +55,7 @@ while nit < maxit:
             and max(of1.class_constr_inf_eq_convex(x_opt, w, l, dataset_trunc, labels_trunc, C)) <= delta \
             and min(of1.class_constr_inf_eq_convex(x_opt, w, l, dataset_trunc, labels_trunc, C)) >= -delta \
             and min(of1.class_constr_inf_ineq_convex_cobyla(x_opt, w, dataset_trunc, labels_trunc, eps_t, C)) >= -delta \
-            and sol.success and np.dot(h, h) / n_t >= eps_t - 10*delta:
+            and sol.success and np.dot(h, h) / n_t >= eps_t - 100*delta:
         break
     nit += 1
 
