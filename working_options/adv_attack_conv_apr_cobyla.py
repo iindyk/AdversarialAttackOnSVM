@@ -8,12 +8,12 @@ import sgd_optimization.obj_con_functions_v1 as of1
 from datasets_parsers.random_dataset_generator import generate_random_dataset as grd
 import datasets_parsers.get_truncated_dataset as tr
 
-n = 200  # training set size
+n = 70  # training set size
 m = 2  # features
 C = 1.0  # SVM regularization parameter
 flip_size = 0  # random attack size
 A = 0  # left end of interval for generating points
-B = 100  # right end of interval for generating points
+B = 1  # right end of interval for generating points
 eps = 0.1*(B-A)  # upper bound for (norm of h)**2
 maxit = 30  # maximum number of iterations
 delta = 1e-2  # precision for break from iterations
