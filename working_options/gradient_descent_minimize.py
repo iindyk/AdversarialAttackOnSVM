@@ -1,24 +1,24 @@
-import datetime
-import matplotlib.pyplot as plt
-import numpy as np
 from scipy.optimize import minimize
+import matplotlib.pyplot as plt
+import datetime
+import numpy as np
 from sklearn import svm
 from sklearn.metrics import accuracy_score
 import sgd_optimization.obj_con_functions_v1 as of1
 from datasets_parsers.random_dataset_generator import generate_random_dataset as grd
-import datasets_parsers.get_truncated_dataset as tr
+
 
 n = 20  # training set size
 m = 2  # features
-C = 10.01  # SVM regularization parameter
+C = 1.0  # SVM regularization parameter
 flip_size = 0  # random attack size
 A = 0  # left end of interval for generating points
-B = 1  # right end of interval for generating points
-eps = 0.01*(B-A)  # upper bound for (norm of h)**2
+B = 100  # right end of interval for generating points
+eps = 0.1*(B-A)  # upper bound for (norm of h)**2
 maxit = 30  # maximum number of iterations
 delta = 1e-2  # precision for break from iterations
-options = {'maxiter': 10000}  # solver options
-maxdist = 1*(B-A)  # maximum allowed distance for dataset truncating
+options = {'diag': [50 for i in range(m*n)]+[1 for i in range(2*n+2+m+2*n)]}  # solver options
+learning_rate = 1e-5  # gradient update rate
 
 
 dataset, labels, colors = grd(n=n, m=m, a=A, b=B, attack=flip_size, read=False, write=False, sep='linear')
@@ -26,61 +26,45 @@ svc = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
 predicted_labels = svc.predict(dataset)
 err_orig = 1 - accuracy_score(labels, predicted_labels)
 print('err on orig is '+str(int(err_orig*100))+'%')
-dataset_trunc, labels_trunc, colors_trunc, indices, x_opt, eps_t \
-    = tr.truncate_by_dist(dataset, labels, colors, maxdist, C, eps)
-n_t = len(dataset_trunc)
-print('number of closest chosen points is '+str(n_t))
-w = x_opt[:m]
-l = x_opt[m+1+m*n_t:m+1+(m+1)*n_t]
 nit = 0
+w = svc.coef_[0][:]
+b = svc.intercept_
 while nit < maxit:
-    print('iteration '+str(nit)+'; start: '+str(datetime.datetime.now().time()))
-    con1 = {'type': 'ineq', 'fun': of1.class_constr_inf_eq_convex,
-            'args': [w, l, dataset_trunc, labels_trunc, C]}
-    con2 = {'type': 'ineq',
-            'fun': lambda x: -1*of1.class_constr_inf_eq_convex(x, w, l, dataset_trunc, labels_trunc, C)}
-    con3 = {'type': 'ineq', 'fun': of1.class_constr_inf_ineq_convex_cobyla,
-            'args': [w, dataset_trunc, labels_trunc, eps_t, C]}
-    cons = [con1, con2, con3]
-    sol = minimize(of1.adv_obj, x_opt, args=(dataset_trunc, labels_trunc), constraints=cons, options=options, method='COBYLA')
+    print('iteration ' + str(nit) + '; start: ' + str(datetime.datetime.now().time()))
+    obj_p = obj
+    grad = of1.adv_obj_gradient(list(w)+[b]+[0.0 for i in range((m+2)*n)], dataset, labels)
+    w = w - learning_rate*grad[:m]
+    b = b - learning_rate*grad[m]
+    con = {'type': 'ineq', 'fun': lambda x: n*eps - np.dot(x, x)}
+    cons = [con]
+    sol = minimize(lambda x: of1.class_obj_inf(w, b, x, dataset, labels, C), np.zeros(m*n), constraints=cons)
+    if sol.success:
+        h = sol.x[:]
     print('success: '+str(sol.success))
     print('message: '+str(sol.message))
-    x_opt = sol.x[:]
-    w, b, h, l, a = of1.decompose_x(x_opt, m, n_t)
     print('nfev= '+str(sol.nfev))
     print('w= '+str(w))
     print('b= '+str(b))
-    print('attack_norm= '+str(100*np.dot(h, h)//(n_t*eps_t))+'%')
-    if of1.adv_obj(x_opt, dataset_trunc, labels_trunc) <= sol.fun+delta \
-            and max(of1.class_constr_inf_eq_convex(x_opt, w, l, dataset_trunc, labels_trunc, C)) <= delta \
-            and min(of1.class_constr_inf_eq_convex(x_opt, w, l, dataset_trunc, labels_trunc, C)) >= -delta \
-            and min(of1.class_constr_inf_ineq_convex_cobyla(x_opt, w, dataset_trunc, labels_trunc, eps_t, C)) >= -delta \
-            and sol.success and np.dot(h, h) / n_t >= eps_t - 100*delta:
-        break
+    print('attack_norm= '+str(100*np.dot(h, h)//(n*eps))+'%')
+    obj = of1.adv_obj(list(w)+[b]+[0.0 for i in range((m+2)*n)], dataset, labels)
     nit += 1
+    dataset_inf = np.array(dataset) + np.transpose(np.reshape(h, (m, n)))
+    svc = svm.SVC(kernel='linear', C=C).fit(dataset_inf, labels)
+    if (obj_p - obj < delta and np.dot(h, h) >= n*eps - delta) or not sol.success\
+            or (b - svc.intercept_)**2+np.dot(w-svc.coef_[0], w-svc.coef_[0]) > delta:
+        break
 
-dataset_infected = []
-print('attack norm= '+str(np.dot(h, h)/n))
-print('objective value= '+str(sol.fun))
-k = 0
-for i in range(0, n):
-    tmp = []
-    if i in indices:
-        for j in range(0, m):
-            tmp.append(dataset[i][j]+h[j*n_t+k])
-        k += 1
-    else:
-        tmp = dataset[i]
-    dataset_infected.append(tmp)
+indices = range(n)
+n_t = n
 # define infected points for graph
 inf_points = []
 k = 0
 for i in indices:
-    if sum([h[j*n_t+k]**2 for j in range(m)]) > 0.9*eps:
-        inf_points.append(dataset_infected[i])
+    if sum([h[j*n+k]**2 for j in range(m)]) > 0.9*eps:
+        inf_points.append(dataset_inf[i])
     k += 1
 svc1 = svm.SVC(kernel='linear', C=C)
-svc1.fit(dataset_infected, labels)
+svc1.fit(dataset_inf, labels)
 predicted_labels_inf_svc = svc1.predict(dataset)
 err_inf_svc = 1 - accuracy_score(labels, predicted_labels_inf_svc)
 print('err on infected dataset by svc is '+str(int(100*err_inf_svc))+'%')
@@ -95,9 +79,9 @@ if m == 2:
     plt.scatter([float(i[0]) for i in dataset], [float(i[1]) for i in dataset], c=colors, cmap=plt.cm.coolwarm)
     plt.subplot(322)
     plt.title('infected')
-    plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
+    plt.scatter([float(i[0]) for i in dataset_inf], [float(i[1]) for i in dataset_inf], c=colors, cmap=plt.cm.coolwarm)
     plt.subplot(323)
-    step = (B-A)/100.0  # step size in the mesh
+    step = 1  # step size in the mesh
 
     x_min, x_max = int(A-2*(eps/m)**0.5), int(B+2*(eps/m)**0.5)
     y_min, y_max = int(A-2*(eps/m)**0.5), int(B+2*(eps/m)**0.5)
@@ -107,7 +91,7 @@ if m == 2:
 
     Z = Z.reshape(xx.shape)
     plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
-    plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
+    plt.scatter([float(i[0]) for i in dataset_inf], [float(i[1]) for i in dataset_inf], c=colors, cmap=plt.cm.coolwarm)
     plt.title('opt on inf data')
     plt.plot([i[0] for i in inf_points], [i[1] for i in inf_points], 'go', mfc='none')
     plt.subplot(324)
@@ -116,7 +100,7 @@ if m == 2:
     Z = svc1.predict(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
     plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
-    plt.scatter([float(i[0]) for i in dataset_infected], [float(i[1]) for i in dataset_infected], c=colors, cmap=plt.cm.coolwarm)
+    plt.scatter([float(i[0]) for i in dataset_inf], [float(i[1]) for i in dataset_inf], c=colors, cmap=plt.cm.coolwarm)
     plt.plot([i[0] for i in inf_points], [i[1] for i in inf_points], 'go', mfc='none')
     plt.title('inf svc on inf data')
 

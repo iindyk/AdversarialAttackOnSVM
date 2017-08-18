@@ -16,6 +16,15 @@ def approx_fun(x):
     # return -0.5+2*sum([np.sin(np.pi*(2*k+1)*x/100)/(np.pi*(2*k+1)) for k in range(0, 100)])
 
 
+def class_obj_inf(w, b, h, dataset, labels, C):
+    av = 0.0
+    n, m = np.shape(dataset)
+    dataset_inf = np.array(dataset) + np.transpose(np.reshape(h, (m, n)))
+    for i in range(n):
+        av += max(0, 1 - labels[i]*(np.dot(w, dataset_inf[i])+b))
+    return C*av + np.dot(w, w)/2
+
+
 def adv_obj(x, dataset, labels):
     n = len(dataset)
     m = len(dataset[0])
