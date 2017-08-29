@@ -8,16 +8,16 @@ import sgd_optimization.obj_con_functions_v1 as of1
 from datasets_parsers.random_dataset_generator import generate_random_dataset as grd
 
 
-n = 20  # training set size
+n = 150  # training set size
 m = 2  # features
 C = 1.0  # SVM regularization parameter
 flip_size = 0  # random attack size
 A = 0  # left end of interval for generating points
 B = 100  # right end of interval for generating points
 eps = 0.1*(B-A)  # upper bound for (norm of h)**2
-maxit = 30  # maximum number of iterations
+maxit = 50  # maximum number of iterations
 delta = 1e-2  # precision for break from iterations
-options = {'diag': [50 for i in range(m*n)]+[1 for i in range(2*n+2+m+2*n)]}  # solver options
+options = {}  # solver options
 learning_rate = 1e-5  # gradient update rate
 
 
@@ -29,8 +29,11 @@ print('err on orig is '+str(int(err_orig*100))+'%')
 nit = 0
 w = svc.coef_[0][:]
 b = svc.intercept_
+obj = 1e10
+h = np.zeros(m*n)
 while nit < maxit:
     print('iteration ' + str(nit) + '; start: ' + str(datetime.datetime.now().time()))
+    h_p = h[:]
     obj_p = obj
     grad = of1.adv_obj_gradient(list(w)+[b]+[0.0 for i in range((m+2)*n)], dataset, labels)
     w = w - learning_rate*grad[:m]
@@ -51,16 +54,17 @@ while nit < maxit:
     dataset_inf = np.array(dataset) + np.transpose(np.reshape(h, (m, n)))
     svc = svm.SVC(kernel='linear', C=C).fit(dataset_inf, labels)
     if (obj_p - obj < delta and np.dot(h, h) >= n*eps - delta) or not sol.success\
-            or (b - svc.intercept_)**2+np.dot(w-svc.coef_[0], w-svc.coef_[0]) > delta:
+            or of1.coeff_diff(w, svc.coef_[0], b, svc.intercept_) > delta:
         break
 
+dataset_inf = np.array(dataset) + np.transpose(np.reshape(h_p, (m, n)))
 indices = range(n)
 n_t = n
 # define infected points for graph
 inf_points = []
 k = 0
 for i in indices:
-    if sum([h[j*n+k]**2 for j in range(m)]) > 0.9*eps:
+    if sum([h_p[j*n+k]**2 for j in range(m)]) > 0.9*eps:
         inf_points.append(dataset_inf[i])
     k += 1
 svc1 = svm.SVC(kernel='linear', C=C)

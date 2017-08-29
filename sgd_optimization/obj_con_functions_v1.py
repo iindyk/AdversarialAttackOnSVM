@@ -16,6 +16,14 @@ def approx_fun(x):
     # return -0.5+2*sum([np.sin(np.pi*(2*k+1)*x/100)/(np.pi*(2*k+1)) for k in range(0, 100)])
 
 
+def coeff_diff(w1, w2, b1, b2):
+    w1_n = w1 / np.sqrt(np.dot(w1, w1) + b1 ** 2)
+    b1_n = b1 / np.sqrt(np.dot(w1, w1) + b1 ** 2)
+    w2_n = w2 / np.sqrt(np.dot(w2, w2) + b2 ** 2)
+    b2_n = b2 / np.sqrt(np.dot(w2, w2) + b2 ** 2)
+    return np.sqrt(np.dot(w1_n - w2_n, w1_n - w2_n) + (b1_n - b2_n) ** 2)
+
+
 def class_obj_inf(w, b, h, dataset, labels, C):
     av = 0.0
     n, m = np.shape(dataset)
