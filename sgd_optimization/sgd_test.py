@@ -4,7 +4,7 @@ from sklearn import svm
 from sklearn.metrics import accuracy_score
 
 import sgd_optimization.optimize as opt
-from datasets_parsers.random_dataset_generator import generate_random_dataset as grd
+from utils.datasets_parsers.random_dataset_generator import generate_random_dataset as grd
 
 eps = 100.0
 n = 200

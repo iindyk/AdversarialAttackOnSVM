@@ -1,7 +1,8 @@
-from datasets_parsers.read_mnist import read, show
+import numpy as np
 from sklearn import svm
 from sklearn.metrics import accuracy_score
-import numpy as np
+
+from utils.datasets_parsers.read_mnist import read
 
 C = 5.0
 gamma = 0.05

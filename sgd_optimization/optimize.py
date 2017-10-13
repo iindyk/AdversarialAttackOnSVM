@@ -1,10 +1,11 @@
-import random
-import numpy as np
 import datetime as dt
-import sgd_optimization.obj_con_functions_v2 as of2
+
+import numpy as np
 import sgd_optimization.obj_con_functions_v1 as of1
 from scipy.optimize import minimize, lsq_linear
 from sklearn import svm
+
+import utils.ofs.obj_con_functions_v2 as of2
 
 
 def project_subspace(y, A, b, C, epsh, n_d, m_d, eps=np.finfo(float).eps):

@@ -1,12 +1,13 @@
-from scipy.optimize import minimize
-import matplotlib.pyplot as plt
 import datetime
+
+import matplotlib.pyplot as plt
 import numpy as np
+from scipy.optimize import minimize
 from sklearn import svm
 from sklearn.metrics import accuracy_score
-import sgd_optimization.obj_con_functions_v1 as of1
-from datasets_parsers.random_dataset_generator import generate_random_dataset as grd
 
+import utils.ofs.obj_con_functions_v1 as of1
+from utils.datasets_parsers.random_dataset_generator import generate_random_dataset as grd
 
 n = 150  # training set size
 m = 2  # features

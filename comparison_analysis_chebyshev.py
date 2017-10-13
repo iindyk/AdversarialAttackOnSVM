@@ -5,7 +5,7 @@ from scipy.optimize import minimize
 from sklearn import svm
 from sklearn.metrics import accuracy_score
 
-from datasets_parsers import read_data_uci as uci
+from utils.datasets_parsers import read_data_uci as uci
 
 ts = uci.read_data_uci_spectf("data_uci_spectf.txt")
 

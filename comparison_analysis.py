@@ -6,7 +6,7 @@ from scipy.optimize import minimize
 from sklearn import svm
 from sklearn.metrics import accuracy_score
 
-from datasets_parsers import read_data_uci as uci
+from utils.datasets_parsers import read_data_uci as uci
 
 print("start at " + str(datetime.now()))
 ts = uci.read_data_uci_survival("data_uci_survival.txt")
