@@ -41,7 +41,7 @@ def adv_obj(x, dataset, labels):
     av = 0.0
     for i in range(0, n):
         av += approx_fun(labels[i] * (np.dot(x[:m], dataset[i]) + x[m]))
-    return av / n
+    return av
 
 
 def adv_obj_gradient(x, dataset, labels):
@@ -176,7 +176,7 @@ def class_constr_inf_eq_nonconvex_jac(x, dataset, labels, C):
         # with respect to l
         for j in range(n):
             ret[i, m + 1 + n * m + j] = -labels[j] * (dataset[j][i] + h[i * n + j])
-            # with respect to a = 0
+        # with respect to a = 0
     # d(con_eq[m])/dx
     for j in range(n):
         # with respect to l, everything else is 0

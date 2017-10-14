@@ -1,4 +1,5 @@
 import pyipopt
+import datetime
 import numpy as np
 import utils.ofs.obj_con_functions_v1 as of1
 from sklearn import svm
@@ -7,7 +8,7 @@ from utils.datasets_parsers.random_dataset_generator import generate_random_data
 from utils.graphs import graph_results as graph
 
 
-n = 20  # training set size
+n = 5  # training set size
 m = 2  # features
 C = 1.0  # SVM regularization parameter
 flip_size = 0  # random attack size
@@ -23,7 +24,7 @@ x0, x_L, x_U, g_L, g_U, err_orig = of1.get_initial_data(dataset, labels, C, eps,
 nvar = m + 1 + n * (m + 2)  # number of variables
 ncon = 3*n+m+2  # number of constraints
 nnzj = ncon*nvar  # number of nonzero elements in Jacobian of constraints function
-nnzh = 0  # number of nonzero elements in Hessian of objective function
+nnzh = nvar**2  # number of nonzero elements in Hessian of Lagrangian
 
 
 def eval_f(x):
@@ -56,7 +57,7 @@ def eval_jac_g(x, flag):
         jac = np.append(of1.class_constr_inf_eq_nonconvex_jac(x, dataset, labels, C),
                         of1.class_constr_inf_ineq_nonconvex_jac(x, dataset, labels, eps),
                         axis=0)
-        assert np.shape(jac) == ncon, nvar
+        assert np.shape(jac) == (ncon, nvar)
         ret = []
         for i in range(ncon):
             for j in range(nvar):
@@ -64,15 +65,22 @@ def eval_jac_g(x, flag):
         return np.array(ret)
 
 
+print(of1.class_constr_inf_eq_nonconvex_jac(x0, dataset, labels, C))
 nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, nnzh, eval_f,
                      eval_grad_f, eval_g, eval_jac_g)
-print("Going to call solve")
-x, zl, zu, constraint_multipliers, obj, status = nlp.solve(x0)
+nlp.str_option("derivative_test", "first-order")
+nlp.str_option('derivative_test_print_all', 'yes')
+nlp.num_option('derivative_test_perturbation', 1e-8)
+nlp.int_option('max_iter', 3000)
+nlp.int_option('print_frequency_iter', 100)
+
+print(datetime.datetime.now(), ": Going to call solve")
+x_opt, zl, zu, constraint_multipliers, obj, status = nlp.solve(x0)
 nlp.close()
 print('status: ', status)
 
 # analysis of results:
-w, b, h, l, a = of1.decompose_x(x, m, n)
+w, b, h, l, a = of1.decompose_x(x_opt, m, n)
 dataset_infected = []
 print('attack norm= '+str(np.dot(h, h)/n))
 print('objective value= '+str(obj))
@@ -97,5 +105,5 @@ print('err on infected dataset by svc is '+str(int(100*err_inf_svc))+'%')
 predicted_labels_inf_opt = np.sign([np.dot(dataset[i], w)+b for i in range(0, n)])
 err_inf_opt = 1 - accuracy_score(labels, predicted_labels_inf_opt)
 print('err on infected dataset by opt is '+str(int(100*err_inf_opt))+'%')
-graph(A, B, eps, dataset, dataset_infected, inf_points, colors, x, n, svc_orig, svc_inf)
+graph(A, B, eps, dataset, dataset_infected, inf_points, colors, x_opt, n, svc_orig, svc_inf)
 
