@@ -10,17 +10,17 @@ from sklearn.metrics import accuracy_score
 import utils.ofs.obj_con_functions_v1 as of1
 from utils.datasets_parsers.random_dataset_generator import generate_random_dataset as grd
 
-n = 20  # training set size
+n = 30  # training set size
 m = 2  # features
 C = 10.01  # SVM regularization parameter
 flip_size = 0  # random attack size
 A = 0  # left end of interval for generating points
 B = 1  # right end of interval for generating points
-eps = 0.01*(B-A)  # upper bound for (norm of h)**2
+eps = 0.1*(B-A)  # upper bound for (norm of h)**2
 maxit = 30  # maximum number of iterations
 delta = 1e-2  # precision for break from iterations
 options = {'maxiter': 10000}  # solver options
-maxdist = 1*(B-A)  # maximum allowed distance for dataset truncating
+maxdist = 0.2*(B-A)  # maximum allowed distance for dataset truncating
 
 
 dataset, labels, colors = grd(n=n, m=m, a=A, b=B, attack=flip_size, read=False, write=False, sep='linear')

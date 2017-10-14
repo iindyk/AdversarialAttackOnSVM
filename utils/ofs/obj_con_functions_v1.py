@@ -1,4 +1,6 @@
 import numpy as np
+from sklearn import svm
+from sklearn.metrics import accuracy_score
 
 
 def decompose_x(x, m, n):
@@ -322,3 +324,47 @@ def class_constr_nonconvex_all_as_eq_jac(z, w, b, dataset, labels, C, eps):
         # a[i]>0
         ret[m + 1 + 2 * n + 3 * n + 1 + i, m * n + i] = ineq_to_eq_jac(a[i])
     return ret
+
+
+def get_initial_data(dataset, labels, C, eps, svc_orig):
+    n, m = np.shape(dataset)
+    predicted_labels = svc_orig.predict(dataset)
+    err_orig = 1 - accuracy_score(labels, predicted_labels)
+    # initial x respects to zero attack and classifier parameters
+    x0 = np.zeros(m + 1 + n * (m + 2))
+    x0[:m] = svc_orig.coef_[0]
+    x0[m] = svc_orig.intercept_
+    for i in range(n):
+        if i in svc_orig.support_:
+            x0[m * n + m+1+i] = svc_orig.dual_coef_[0][list(svc_orig.support_).index(i)] / labels[i]
+        elif labels[i] * (np.dot(x0[:m], dataset[i]) + x0[m]) < 0:
+            x0[m * n + m + 1 + i] = C
+        x0[m * n + n + i+m+1] = max((0, 1 - labels[i] * (np.dot(x0[:m], dataset[i]) + x0[m])))
+    # define bounds for variables:
+    x_L = []
+    x_U = []
+    # bounds for w:
+    for j in range(m):
+        x_L.append(-1.0)
+        x_U.append(1.0)
+    # bounds for b:
+    x_L.append(-1e10)
+    x_U.append(1e10)
+    # bounds for h:
+    for i in range(n):
+        for j in range(m):
+            x_L.append(-np.sqrt(n * eps))
+            x_U.append(np.sqrt(n * eps))
+    # bounds for l:
+    for i in range(n):
+        x_L.append(0.0)
+        x_U.append(C)
+    # bounds for a:
+    for i in range(n):
+        x_L.append(0.0)
+        x_U.append(1e10)
+    # define bounds for constraints:
+    g_L = np.zeros((3*n+m+2))
+    g_U = np.zeros((3*n+m+2))
+    g_U[2*n+m+1:] = 1e10
+    return x0, np.array(x_L), np.array(x_U), g_L, g_U, err_orig
