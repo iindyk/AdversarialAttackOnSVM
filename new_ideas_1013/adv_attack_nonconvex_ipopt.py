@@ -8,18 +8,21 @@ from utils.datasets_parsers.random_dataset_generator import generate_random_data
 from utils.graphs import graph_results as graph
 
 
-n = 5  # training set size
+n = 50  # training set size
 m = 2  # features
-C = 1.0  # SVM regularization parameter
-flip_size = 0  # random attack size
-A = 0  # left end of interval for generating points
-B = 1  # right end of interval for generating points
-eps = 0.1*(B-A)  # upper bound for (norm of h)**2
+C = 10.0  # SVM regularization parameter
+flip_size = 5  # random attack size
+A = 0.0  # left end of interval for generating points
+B = 1.0  # right end of interval for generating points
+eps = 0.05*(B-A)  # upper bound for (norm of h)**2
 
 
 dataset, labels, colors = grd(n=n, m=m, a=A, b=B, attack=flip_size, read=False, write=False, sep='linear')
 svc_orig = svm.SVC(kernel='linear', C=C).fit(dataset, labels)
 x0, x_L, x_U, g_L, g_U, err_orig = of1.get_initial_data(dataset, labels, C, eps, svc_orig)
+
+print(of1.class_constr_inf_eq_nonconvex(x0, dataset, labels, C))
+print(of1.class_constr_inf_ineq_nonconvex(x0, dataset, labels, eps))
 
 nvar = m + 1 + n * (m + 2)  # number of variables
 ncon = 3*n+m+2  # number of constraints
@@ -65,12 +68,15 @@ def eval_jac_g(x, flag):
         return np.array(ret)
 
 
-print(of1.class_constr_inf_eq_nonconvex_jac(x0, dataset, labels, C))
 nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, nnzh, eval_f,
                      eval_grad_f, eval_g, eval_jac_g)
-nlp.str_option("derivative_test", "first-order")
-nlp.str_option('derivative_test_print_all', 'yes')
+nlp.str_option("derivative_test", "none")
+nlp.str_option('derivative_test_print_all', 'no')
+
 nlp.num_option('derivative_test_perturbation', 1e-8)
+nlp.num_option('tol', 1e-4)
+nlp.num_option('acceptable_constr_viol_tol', 0.1)
+
 nlp.int_option('max_iter', 3000)
 nlp.int_option('print_frequency_iter', 100)
 
@@ -84,6 +90,8 @@ w, b, h, l, a = of1.decompose_x(x_opt, m, n)
 dataset_infected = []
 print('attack norm= '+str(np.dot(h, h)/n))
 print('objective value= '+str(obj))
+print('w= ', x_opt[:m])
+print('b= ', x_opt[m])
 k = 0
 for i in range(0, n):
     tmp = []
@@ -92,11 +100,9 @@ for i in range(0, n):
     dataset_infected.append(tmp)
 # define infected points for graph
 inf_points = []
-k = 0
 for i in range(n):
-    if sum([h[j*n+k]**2 for j in range(m)]) > 0.9*eps:
+    if sum([h[j*n+i]**2 for j in range(m)]) > 0.9*eps:
         inf_points.append(dataset_infected[i])
-    k += 1
 svc_inf = svm.SVC(kernel='linear', C=C)
 svc_inf.fit(dataset_infected, labels)
 predicted_labels_inf_svc = svc_inf.predict(dataset)
@@ -105,5 +111,5 @@ print('err on infected dataset by svc is '+str(int(100*err_inf_svc))+'%')
 predicted_labels_inf_opt = np.sign([np.dot(dataset[i], w)+b for i in range(0, n)])
 err_inf_opt = 1 - accuracy_score(labels, predicted_labels_inf_opt)
 print('err on infected dataset by opt is '+str(int(100*err_inf_opt))+'%')
-graph(A, B, eps, dataset, dataset_infected, inf_points, colors, x_opt, n, svc_orig, svc_inf)
+graph(A, B, eps, dataset,labels, dataset_infected, inf_points, colors, x_opt, n, svc_orig, svc_inf)
 

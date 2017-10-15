@@ -148,17 +148,17 @@ def class_constr_inf_ineq_convex_jac(x, w_prev, dataset, labels, eps, C):
 
 
 def class_constr_inf_eq_nonconvex(x, dataset, labels, C):
-    ret = []
     n, m = np.shape(dataset)
+    ret = np.zeros((m + 1 + 2 * n))
     w, b, h, l, a = decompose_x(x, m, n)
-    for j in range(0, m):
-        ret.append(w[j] - sum([l[i] * labels[i] * (dataset[i][j] + h[j * n + i]) for i in range(0, n)]))
-    ret.append(sum([l[i] * labels[i] for i in range(0, n)]))
-    for i in range(0, n):
+    for j in range(m):
+        ret[j] = w[j] - sum([l[i] * labels[i] * (dataset[i][j] + h[j * n + i]) for i in range(0, n)])
+    ret[m] = sum([l[i] * labels[i] for i in range(0, n)])
+    for i in range(n):
         hi = [h[j * n + i] for j in range(0, m)]
-        ret.append(l[i] - l[i] * a[i] - l[i] * labels[i] * (np.dot(w, dataset[i]) + np.dot(w, hi) + b))
-        ret.append(l[i] * a[i] - C * a[i])
-    return np.array(ret)
+        ret[m+1+i] = l[i] - l[i] * a[i] - l[i] * labels[i] * (np.dot(w, dataset[i]) + np.dot(w, hi) + b)
+        ret[m+1+n+i] = l[i] * a[i] - C * a[i]
+    return ret
 
 
 def class_constr_inf_eq_nonconvex_jac(x, dataset, labels, C):
@@ -341,30 +341,28 @@ def get_initial_data(dataset, labels, C, eps, svc_orig):
             x0[m * n + m + 1 + i] = C
         x0[m * n + n + i+m+1] = max((0, 1 - labels[i] * (np.dot(x0[:m], dataset[i]) + x0[m])))
     # define bounds for variables:
-    x_L = []
-    x_U = []
+    x_L = np.zeros((m+1+n*m+2*n))
+    x_U = np.zeros((m+1+n*m+2*n))
     # bounds for w:
     for j in range(m):
-        x_L.append(-1.0)
-        x_U.append(1.0)
+        x_L[j] = -1.0
+        x_U[j] = 1.0
     # bounds for b:
-    x_L.append(-1e10)
-    x_U.append(1e10)
+    x_L[m] = -1e10
+    x_U[m] = 1e10
     # bounds for h:
     for i in range(n):
         for j in range(m):
-            x_L.append(-np.sqrt(n * eps))
-            x_U.append(np.sqrt(n * eps))
+            x_L[m+1+j*n+i] = -np.sqrt(n * eps)
+            x_U[m+1+j*n+i] = np.sqrt(n * eps)
     # bounds for l:
     for i in range(n):
-        x_L.append(0.0)
-        x_U.append(C)
+        x_U[m+1+n*m+i] = C
     # bounds for a:
     for i in range(n):
-        x_L.append(0.0)
-        x_U.append(1e10)
+        x_U[m+1+n*m+i+n] = 1e10
     # define bounds for constraints:
     g_L = np.zeros((3*n+m+2))
     g_U = np.zeros((3*n+m+2))
     g_U[2*n+m+1:] = 1e10
-    return x0, np.array(x_L), np.array(x_U), g_L, g_U, err_orig
+    return x0, x_L, x_U, g_L, g_U, err_orig
